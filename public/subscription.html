@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing & Subscriptions | PhotoVault</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .pricing-header {
+            text-align: center;
+            padding: var(--space-16) 0 var(--space-8);
+            margin-top: 80px;
+        }
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--space-8);
+            padding: var(--space-8) 0 var(--space-16);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .pricing-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-xl);
+            padding: var(--space-8);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .pricing-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-lg);
+        }
+        .pricing-card.featured {
+            border-color: var(--accent-primary);
+            background: linear-gradient(180deg, rgba(124, 58, 237, 0.1) 0%, var(--bg-surface) 100%);
+        }
+        .featured-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--gradient-brand);
+            color: white;
+            padding: 4px 16px;
+            border-radius: var(--radius-full);
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .plan-name { font-size: 1.5rem; font-weight: 700; margin-bottom: var(--space-2); }
+        .plan-price { font-size: 3rem; font-weight: 800; font-family: var(--font-display); color: var(--text-primary); margin-bottom: var(--space-6); }
+        .plan-price span { font-size: 1rem; color: var(--text-muted); font-weight: 400; }
+        
+        .plan-features {
+            list-style: none;
+            margin-bottom: var(--space-8);
+            flex: 1;
+        }
+        .plan-features li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+        }
+        .plan-features i { color: var(--accent-success); width: 18px; height: 18px; }
+        
+        /* Modal */
+        #gateway-modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            z-index: 1000; display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        #gateway-modal.active { opacity: 1; pointer-events: auto; }
+        .modal-content { background: var(--bg-surface); padding: var(--space-6); border-radius: var(--radius-xl); width: 90%; max-width: 500px; border: 1px solid var(--border-strong); }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="/" class="logo"><i data-lucide="aperture" class="logo-icon"></i>PhotoVault</a>
+            <nav class="nav-links">
+                <a href="/gallery">Discover</a>
+                <a href="/subscription" class="active">Pricing</a>
+                <div class="guest-links flex gap-4 items-center"><a href="/login" class="btn btn-ghost">Log In</a></div>
+                <div class="auth-links flex gap-6 items-center hidden">
+                    <a href="/cart" class="cart-icon" style="position: relative;"><i data-lucide="shopping-cart"></i><span class="cart-count hidden" style="position:absolute; top:-8px; right:-12px; background:var(--accent-danger); color:white; font-size:10px; padding:2px 6px; border-radius:10px; font-weight:bold;">0</span></a>
+                    <a href="/account" class="flex items-center gap-2"><i data-lucide="user-circle"></i><span class="user-name-display">Account</span></a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="pricing-header container">
+            <h1 class="mb-4">Simple, Transparent Pricing</h1>
+            <p class="text-muted" style="max-width: 600px; margin: 0 auto; font-size: 1.1rem;">Subscribe to a monthly plan to save on downloads, or purchase photos individually via the cart.</p>
+        </div>
+
+        <div class="container">
+            <div class="pricing-grid" id="pricing-grid">
+                <div class="text-center py-12 w-full" style="grid-column: 1/-1;"><i data-lucide="loader-2" class="spin"></i> Loading plans...</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Payment Modal -->
+    <div id="gateway-modal">
+        <div class="modal-content animate-slide-up">
+            <div class="flex justify-between items-center mb-6">
+                <h3>Select Payment Method</h3>
+                <button class="btn btn-icon" onclick="document.getElementById('gateway-modal').classList.remove('active')"><i data-lucide="x"></i></button>
+            </div>
+            <div id="modal-gateways" class="flex flex-col gap-4">
+                <!-- Gateways injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/utils.js"></script>
+    <script src="/js/app.js"></script>
+    <script>
+        let currentPlanId = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (window.lucide) lucide.createIcons();
+            await App.init();
+            loadPlans();
+        });
+
+        async function loadPlans() {
+            try {
+                const res = await window.utils.api.get('/subscriptions/plans');
+                const grid = document.getElementById('pricing-grid');
+                
+                grid.innerHTML = res.plans.map((plan, index) => {
+                    const isFeatured = index === 1; // Highlight middle plan
+                    const isUnlimited = plan.downloads_per_month === -1;
+                    const btnText = plan.price_monthly === 0 ? 'Start Free' : 'Subscribe Now';
+                    
+                    let featureHtml = '';
+                    if (Array.isArray(plan.features)) {
+                        featureHtml = plan.features.map(f => `<li><i data-lucide="check"></i> ${f}</li>`).join('');
+                    } else {
+                        featureHtml = `<li><i data-lucide="check"></i> ${isUnlimited ? 'Unlimited' : plan.downloads_per_month} Downloads / month</li>
+                                       <li><i data-lucide="check"></i> Standard License included</li>`;
+                    }
+
+                    return `
+                        <div class="pricing-card ${isFeatured ? 'featured' : ''}">
+                            ${isFeatured ? '<div class="featured-badge">Most Popular</div>' : ''}
+                            <div class="plan-name">${plan.name}</div>
+                            <div class="plan-price">
+                                ${plan.price_monthly === 0 ? 'Free' : `RM ${plan.price_monthly}`}
+                                <span>/ mo</span>
+                            </div>
+                            <ul class="plan-features">
+                                ${featureHtml}
+                            </ul>
+                            <button class="btn ${isFeatured ? 'btn-primary' : 'btn-secondary'} w-full subscribe-btn" data-plan-id="${plan.id}" data-price="${plan.price_monthly}">
+                                ${btnText}
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+
+                if (window.lucide) lucide.createIcons({root: grid});
+
+                document.querySelectorAll('.subscribe-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => handleSubscribeClick(e.target));
+                });
+
+            } catch (err) {
+                document.getElementById('pricing-grid').innerHTML = `<div class="text-center text-danger w-full py-12">${err.message}</div>`;
+            }
+        }
+
+        async function handleSubscribeClick(btn) {
+            if (!App.user) {
+                window.location.href = '/login?redirect=/subscription';
+                return;
+            }
+
+            const planId = btn.dataset.planId;
+            const price = parseFloat(btn.dataset.price);
+
+            if (price === 0) {
+                // Free plan - subscribe directly
+                btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i>';
+                try {
+                    const res = await window.utils.api.post('/subscriptions/subscribe', { plan_id: planId });
+                    if (res.activated) {
+                        window.utils.showToast(`Activated ${res.plan} successfully`);
+                        setTimeout(() => window.location.href = '/account', 1500);
+                    }
+                } catch (err) {
+                    window.utils.showToast(err.message, 'error');
+                    btn.innerHTML = 'Start Free';
+                }
+            } else {
+                // Paid plan - open gateway modal
+                currentPlanId = planId;
+                await loadGateways();
+                document.getElementById('gateway-modal').classList.add('active');
+            }
+        }
+
+        async function loadGateways() {
+            const container = document.getElementById('modal-gateways');
+            container.innerHTML = '<div class="text-center"><i data-lucide="loader-2" class="spin"></i></div>';
+            if (window.lucide) lucide.createIcons({root: container});
+
+            try {
+                const res = await window.utils.api.get('/payment/gateways');
+                const gateways = [...res.gateways, { gateway_name: 'simulator', display_name: 'Test Simulator (Free)' }];
+                
+                container.innerHTML = gateways.map(gw => `
+                    <button class="btn btn-secondary justify-between w-full p-4" onclick="processSubscription('${gw.gateway_name}')" style="font-size: 1.1rem;">
+                        <span>${gw.display_name || gw.gateway_name}</span>
+                        <i data-lucide="chevron-right"></i>
+                    </button>
+                `).join('');
+                if (window.lucide) lucide.createIcons({root: container});
+            } catch (err) {
+                container.innerHTML = `<div class="text-danger">${err.message}</div>`;
+            }
+        }
+
+        async function processSubscription(gateway) {
+            if (!currentPlanId) return;
+            try {
+                // 1. Create order for subscription
+                const subRes = await window.utils.api.post('/subscriptions/subscribe', { 
+                    plan_id: currentPlanId, 
+                    payment_gateway: gateway 
+                });
+                
+                const orderId = subRes.order.id;
+
+                // 2. Process payment
+                if (gateway === 'simulator') {
+                    await window.utils.api.post(`/payment/simulate/${orderId}`);
+                    window.location.href = `/checkout?status=return&order=${orderId}`;
+                } else {
+                    const payRes = await window.utils.api.post('/payment/create', {
+                        order_id: orderId, gateway: gateway
+                    });
+                    if (payRes.paymentUrl) window.location.href = payRes.paymentUrl;
+                }
+            } catch (err) {
+                window.utils.showToast(err.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

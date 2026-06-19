@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Details | PhotoVault</title>
+    
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        .image-view-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: var(--space-8);
+            padding: var(--space-8) 0;
+            margin-top: 80px;
+        }
+
+        @media (max-width: 1024px) {
+            .image-view-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .image-preview-box {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-xl);
+            padding: var(--space-4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 500px;
+            cursor: zoom-in;
+            position: relative;
+        }
+
+        .image-preview-box img {
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        .watermark-notice {
+            position: absolute;
+            bottom: var(--space-4);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+            padding: 8px 16px;
+            border-radius: var(--radius-full);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .image-details-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-6);
+        }
+
+        .purchase-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-xl);
+            padding: var(--space-6);
+            box-shadow: var(--shadow-md);
+        }
+
+        .price-tag {
+            font-size: 2.5rem;
+            font-weight: 800;
+            font-family: var(--font-display);
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+        }
+
+        .exif-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-4);
+        }
+
+        .exif-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .exif-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .exif-value {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+<body>
+
+    <header class="site-header">
+        <!-- Exact same header as index.html -->
+        <div class="container">
+            <a href="/" class="logo"><i data-lucide="aperture" class="logo-icon"></i>PhotoVault</a>
+            <nav class="nav-links">
+                <a href="/gallery">Discover</a>
+                <a href="/subscription">Pricing</a>
+                <div class="guest-links flex gap-4 items-center">
+                    <a href="/login" class="btn btn-ghost">Log In</a>
+                    <a href="/register" class="btn btn-primary">Sign Up</a>
+                </div>
+                <div class="auth-links flex gap-6 items-center hidden">
+                    <a href="/cart" class="cart-icon" style="position: relative;">
+                        <i data-lucide="shopping-cart"></i>
+                        <span class="cart-count hidden" style="position: absolute; top:-8px; right:-12px; background:var(--accent-danger); color:white; font-size:10px; padding:2px 6px; border-radius:10px; font-weight:bold;">0</span>
+                    </a>
+                    <a href="/account" class="flex items-center gap-2">
+                        <i data-lucide="user-circle"></i>
+                        <span class="user-name-display">Account</span>
+                    </a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="image-view-container" id="image-container">
+            <!-- Loading State -->
+            <div class="glass-panel text-center py-16" style="grid-column: 1 / -1;">
+                <i data-lucide="loader-2" class="spin mb-4" style="width: 48px; height: 48px; color: var(--accent-primary);"></i>
+                <h2>Loading Photo Details...</h2>
+            </div>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container text-center"><p class="text-muted">© 2024 PhotoVault.</p></div>
+    </footer>
+
+    <script src="/js/utils.js?v=4"></script>
+    <script src="/js/app.js?v=4"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Wait for App to finish auth check first
+            if (App._initPromise) await App._initPromise;
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const imageId = urlParams.get('id');
+            const container = document.getElementById('image-container');
+
+            if (!imageId) {
+                container.innerHTML = `<div class="glass-panel text-center py-16" style="grid-column: 1 / -1;"><h2>Image Not Found</h2></div>`;
+                return;
+            }
+
+            try {
+                const res = await window.utils.api.get(`/images/${imageId}`);
+                const { image, metadata, purchased, is_favorited } = res;
+
+                document.title = `${image.title} | PhotoVault`;
+
+                // Render
+                container.innerHTML = `
+                    <div class="image-preview-section animate-slide-up">
+                        <a href="/gallery?slug=${image.gallery_slug}" class="btn btn-ghost mb-4" style="padding-left: 0;">
+                            <i data-lucide="arrow-left"></i> Back to ${image.gallery_title}
+                        </a>
+                        
+                        <div class="image-preview-box" onclick="window.utils.lightbox.open('/api/images/${image.id}/preview')">
+                            <img src="/api/images/${image.id}/preview" alt="${image.title}">
+                            <div class="watermark-notice">
+                                <i data-lucide="shield-check" style="width:16px; height:16px;"></i> Watermark removed after purchase
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="image-details-sidebar animate-slide-up" style="animation-delay: 0.1s;">
+                        <div class="purchase-card">
+                            <h1 style="font-size: 1.5rem; margin-bottom: 8px;">${image.title}</h1>
+                            <p class="text-muted mb-6">Original Resolution: ${image.width} × ${image.height} px</p>
+
+                            ${purchased ? '' : `<div class="price-tag">${window.utils.formatCurrency(image.price)}</div>`}
+                            <p class="text-sm text-secondary mb-6"><i data-lucide="check-circle-2" style="width:16px; height:16px; display:inline-block; vertical-align:middle; color:var(--accent-success);"></i> Royalty-free ${image.license_type} license</p>
+
+                            <div class="flex flex-col gap-4">
+                                ${purchased ? `
+                                    <a href="/api/images/${image.id}/original" class="btn btn-primary" download style="width: 100%;">
+                                        <i data-lucide="download"></i> Download Original
+                                    </a>
+                                ` : `
+                                    <button class="btn btn-primary add-to-cart-btn" data-image-id="${image.id}" style="width: 100%;">
+                                        <i data-lucide="shopping-cart"></i> Add to Cart
+                                    </button>
+                                `}
+                                
+                                <button class="btn btn-secondary favorite-btn ${is_favorited ? 'active' : ''}" data-image-id="${image.id}" style="width: 100%;">
+                                    <i data-lucide="heart" fill="${is_favorited ? 'currentColor' : 'none'}"></i> 
+                                    ${is_favorited ? 'Saved to Favorites' : 'Add to Favorites'}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="glass-panel">
+                            <h3 class="flex items-center gap-2 mb-4"><i data-lucide="info"></i> Image Information</h3>
+                            
+                            <div class="exif-grid">
+                                ${metadata.camera_make || metadata.camera_model ? `
+                                    <div class="exif-item">
+                                        <span class="exif-label">Camera</span>
+                                        <span class="exif-value">${metadata.camera_make} ${metadata.camera_model}</span>
+                                    </div>
+                                ` : ''}
+                                ${metadata.lens ? `
+                                    <div class="exif-item">
+                                        <span class="exif-label">Lens</span>
+                                        <span class="exif-value">${metadata.lens}</span>
+                                    </div>
+                                ` : ''}
+                                ${metadata.focal_length ? `
+                                    <div class="exif-item">
+                                        <span class="exif-label">Focal Length</span>
+                                        <span class="exif-value">${metadata.focal_length}</span>
+                                    </div>
+                                ` : ''}
+                                ${metadata.aperture ? `
+                                    <div class="exif-item">
+                                        <span class="exif-label">Aperture</span>
+                                        <span class="exif-value">${metadata.aperture}</span>
+                                    </div>
+                                ` : ''}
+                                ${metadata.shutter_speed ? `
+                                    <div class="exif-item">
+                                        <span class="exif-label">Shutter Speed</span>
+                                        <span class="exif-value">${metadata.shutter_speed}</span>
+                                    </div>
+                                ` : ''}
+                                ${metadata.iso ? `
+                                    <div class="exif-item">
+                                        <span class="exif-label">ISO</span>
+                                        <span class="exif-value">${metadata.iso}</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            
+                            ${!metadata.camera_model && !metadata.focal_length ? '<p class="text-muted text-sm">EXIF data not available for this image.</p>' : ''}
+                            
+                            ${res.isAdmin ? `
+                                <button class="btn btn-secondary" style="width: 100%; margin-top: 16px;" onclick="openEditModal()">
+                                    <i data-lucide="edit-3"></i> Edit Image Info
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+                
+                if (res.isAdmin) {
+                    if (!document.getElementById('edit-metadata-modal')) {
+                        const modal = document.createElement('div');
+                        modal.id = 'edit-metadata-modal';
+                        modal.style.display = 'none';
+                        modal.style.position = 'fixed';
+                        modal.style.top = '0'; modal.style.left = '0'; modal.style.width = '100%'; modal.style.height = '100%';
+                        modal.style.background = 'rgba(0,0,0,0.8)';
+                        modal.style.zIndex = '1000';
+                        modal.style.alignItems = 'center'; modal.style.justifyContent = 'center';
+                        
+                        modal.innerHTML = `
+                            <div class="glass-panel" style="width: 100%; max-width: 500px; padding: 24px; max-height: 90vh; overflow-y: auto;">
+                                <h3>Edit Image Info</h3>
+                                <div class="form-group mt-4">
+                                    <label class="form-label">Title</label>
+                                    <input type="text" id="edit-title" class="form-control" value="${image.title || ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Category (Gallery)</label>
+                                    <select id="edit-gallery" class="form-control">
+                                        <option value="">-- No Gallery --</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Tags (comma separated)</label>
+                                    <input type="text" id="edit-tags" class="form-control" value="${image.tags || ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Description / Caption</label>
+                                    <textarea id="edit-desc" class="form-control">${image.description || ''}</textarea>
+                                </div>
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Camera Make</label>
+                                        <input type="text" id="edit-make" class="form-control" value="${metadata.camera_make || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Camera Model</label>
+                                        <input type="text" id="edit-model" class="form-control" value="${metadata.camera_model || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Lens</label>
+                                        <input type="text" id="edit-lens" class="form-control" value="${metadata.lens || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Focal Length</label>
+                                        <input type="text" id="edit-focal" class="form-control" value="${metadata.focal_length || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Aperture</label>
+                                        <input type="text" id="edit-aperture" class="form-control" value="${metadata.aperture || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Shutter Speed</label>
+                                        <input type="text" id="edit-shutter" class="form-control" value="${metadata.shutter_speed || ''}">
+                                    </div>
+                                </div>
+                                <div class="flex gap-4 mt-6">
+                                    <button class="btn btn-primary" onclick="saveMetadata(${image.id})">Save Changes</button>
+                                    <button class="btn btn-ghost" onclick="document.getElementById('edit-metadata-modal').style.display='none'">Cancel</button>
+                                </div>
+                            </div>
+                        `;
+                        document.body.appendChild(modal);
+                        
+                        window.openEditModal = async () => {
+                            try {
+                                const galleryRes = await window.utils.api.get('/galleries?limit=100');
+                                const select = document.getElementById('edit-gallery');
+                                select.innerHTML = '<option value="">-- No Gallery --</option>' + (galleryRes.galleries || []).map(g => `<option value="${g.id}">${g.title}</option>`).join('');
+                                select.value = image.gallery_id || '';
+                            } catch(e) {
+                                console.error('Failed to load galleries for dropdown', e);
+                            }
+                            document.getElementById('edit-metadata-modal').style.display = 'flex';
+                        };
+                        
+                        window.saveMetadata = async (id) => {
+                            const payload = {
+                                title: document.getElementById('edit-title').value,
+                                gallery_id: document.getElementById('edit-gallery').value || null,
+                                tags: document.getElementById('edit-tags').value,
+                                description: document.getElementById('edit-desc').value,
+                                camera_make: document.getElementById('edit-make').value,
+                                camera_model: document.getElementById('edit-model').value,
+                                lens: document.getElementById('edit-lens').value,
+                                focal_length: document.getElementById('edit-focal').value,
+                                aperture: document.getElementById('edit-aperture').value,
+                                shutter_speed: document.getElementById('edit-shutter').value
+                            };
+                            try {
+                                const btn = document.querySelector('#edit-metadata-modal .btn-primary');
+                                btn.textContent = 'Saving...';
+                                await window.utils.api.put('/images/' + id, payload);
+                                window.location.reload();
+                            } catch(e) {
+                                alert(e.message);
+                                const btn = document.querySelector('#edit-metadata-modal .btn-primary');
+                                btn.textContent = 'Save Changes';
+                            }
+                        };
+                    }
+                }
+                
+                if (window.lucide) lucide.createIcons();
+
+            } catch (err) {
+                container.innerHTML = `<div class="glass-panel text-center py-16" style="grid-column: 1 / -1;">
+                    <i data-lucide="alert-triangle" class="text-danger mb-4" style="width: 48px; height: 48px;"></i>
+                    <h2>${err.message || 'Error loading image'}</h2>
+                </div>`;
+                if (window.lucide) lucide.createIcons();
+            }
+        });
+    </script>
+</body>
+</html>

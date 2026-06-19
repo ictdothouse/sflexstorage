@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout | PhotoVault</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .checkout-container {
+            padding: var(--space-8) 0;
+            margin-top: 80px;
+            max-width: 800px;
+        }
+        .gateway-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-4);
+            margin-top: var(--space-4);
+        }
+        .gateway-card {
+            border: 2px solid var(--border-strong);
+            background: var(--bg-surface);
+            border-radius: var(--radius-md);
+            padding: var(--space-4);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+        }
+        .gateway-card:hover {
+            border-color: var(--accent-secondary);
+        }
+        .gateway-card.selected {
+            border-color: var(--accent-primary);
+            background: rgba(124, 58, 237, 0.1);
+        }
+        .gateway-icon {
+            width: 40px; height: 40px;
+            background: white;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            color: #333; font-weight: bold; font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="/" class="logo"><i data-lucide="aperture" class="logo-icon"></i>PhotoVault</a>
+        </div>
+    </header>
+
+    <main class="container checkout-container">
+        
+        <!-- Status View (Return from Gateway) -->
+        <div id="status-view" class="hidden glass-panel text-center py-12">
+            <!-- Injected by JS -->
+        </div>
+
+        <!-- Checkout Form -->
+        <div id="checkout-view" class="glass-panel">
+            <h2 class="mb-6"><i data-lucide="lock" style="display:inline-block; vertical-align:middle; margin-right:8px; color:var(--accent-success);"></i> Secure Checkout</h2>
+            
+            <div id="order-summary-box" class="mb-8 p-4" style="background: rgba(0,0,0,0.3); border-radius: var(--radius-md);">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-secondary">Order Total</span>
+                    <span class="text-xl font-bold text-white" id="checkout-total">RM 0.00</span>
+                </div>
+                <div class="text-sm text-muted" id="checkout-items">0 items</div>
+            </div>
+
+            <h4 class="mb-4">Select Payment Method</h4>
+            <div class="gateway-selector" id="gateways-container">
+                <div class="text-center py-4 w-full"><i data-lucide="loader-2" class="spin"></i> Loading payment gateways...</div>
+            </div>
+
+            <div class="mt-8 pt-6" style="border-top: 1px solid var(--border-subtle);">
+                <button class="btn btn-primary w-full py-4 text-lg" id="pay-now-btn" disabled>
+                    <i data-lucide="credit-card"></i> Pay Now
+                </button>
+                <div class="text-center mt-4">
+                    <p class="text-xs text-muted"><i data-lucide="shield-check" style="width:12px; height:12px;"></i> Payments are secure and encrypted.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/js/utils.js"></script>
+    <script src="/js/app.js"></script>
+    <script>
+        let currentOrder = null;
+        let selectedGateway = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (window.lucide) lucide.createIcons();
+            await App.init();
+            
+            if (!App.user) {
+                window.location.href = '/login?redirect=/checkout';
+                return;
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const status = urlParams.get('status');
+            const orderId = urlParams.get('order');
+
+            if (status === 'return' && orderId) {
+                // Handling return from payment gateway
+                handlePaymentReturn(orderId);
+            } else {
+                // Normal checkout flow
+                initCheckout();
+            }
+        });
+
+        async function initCheckout() {
+            try {
+                // 1. Create order from cart
+                const checkoutRes = await window.utils.api.post('/cart/checkout', {});
+                currentOrder = checkoutRes.order;
+                
+                document.getElementById('checkout-total').textContent = window.utils.formatCurrency(currentOrder.total);
+                document.getElementById('checkout-items').textContent = `${currentOrder.items} items`;
+
+                // 2. Load Gateways
+                const gwRes = await window.utils.api.get('/payment/gateways');
+                renderGateways(gwRes.gateways);
+
+            } catch (err) {
+                window.utils.showToast(err.message, 'error');
+                if (err.message === 'Cart is empty.') {
+                    window.location.href = '/cart';
+                }
+            }
+        }
+
+        function renderGateways(gateways) {
+            const container = document.getElementById('gateways-container');
+            const payBtn = document.getElementById('pay-now-btn');
+
+            if (gateways.length === 0) {
+                container.innerHTML = '<div class="text-danger p-4 w-full text-center border border-danger rounded">No active payment gateways available. Administrator must configure them.</div>';
+                return;
+            }
+
+            // Always add simulator for testing if we are in dev (for this demo, we add it)
+            const allGateways = [...gateways, { gateway_name: 'simulator', display_name: 'Test Simulator (Free)' }];
+
+            container.innerHTML = allGateways.map(gw => `
+                <div class="gateway-card" data-gateway="${gw.gateway_name}">
+                    <div class="gateway-icon">${gw.gateway_name.substring(0,3).toUpperCase()}</div>
+                    <div>
+                        <div class="font-bold">${gw.display_name || gw.gateway_name}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            const cards = container.querySelectorAll('.gateway-card');
+            cards.forEach(card => {
+                card.addEventListener('click', () => {
+                    cards.forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    selectedGateway = card.dataset.gateway;
+                    payBtn.disabled = false;
+                });
+            });
+
+            // Handle Pay Click
+            payBtn.addEventListener('click', async () => {
+                if (!selectedGateway || !currentOrder) return;
+                
+                payBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Processing...';
+                payBtn.disabled = true;
+                if (window.lucide) lucide.createIcons({ root: payBtn });
+
+                try {
+                    if (selectedGateway === 'simulator') {
+                        await window.utils.api.post(`/payment/simulate/${currentOrder.id}`);
+                        window.location.href = `/checkout?status=return&order=${currentOrder.id}`;
+                    } else {
+                        const res = await window.utils.api.post('/payment/create', {
+                            order_id: currentOrder.id,
+                            gateway: selectedGateway
+                        });
+                        if (res.paymentUrl) {
+                            window.location.href = res.paymentUrl;
+                        } else {
+                            throw new Error('No payment URL returned');
+                        }
+                    }
+                } catch (err) {
+                    window.utils.showToast(err.message, 'error');
+                    payBtn.innerHTML = '<i data-lucide="credit-card"></i> Pay Now';
+                    payBtn.disabled = false;
+                    if (window.lucide) lucide.createIcons({ root: payBtn });
+                }
+            });
+        }
+
+        async function handlePaymentReturn(orderId) {
+            document.getElementById('checkout-view').classList.add('hidden');
+            const statusView = document.getElementById('status-view');
+            statusView.classList.remove('hidden');
+            
+            statusView.innerHTML = `
+                <i data-lucide="loader-2" class="spin" style="width:64px; height:64px; color:var(--accent-primary); margin: 0 auto 24px;"></i>
+                <h2>Verifying Payment...</h2>
+                <p class="text-muted mt-2">Please do not close this window.</p>
+            `;
+            if (window.lucide) lucide.createIcons({ root: statusView });
+
+            try {
+                // Verify status via API
+                const res = await window.utils.api.get(`/payment/verify/${orderId}`);
+                
+                if (res.status === 'paid' || res.status === 'completed') {
+                    statusView.innerHTML = `
+                        <div style="background: rgba(16, 185, 129, 0.1); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;">
+                            <i data-lucide="check" style="width:40px; height:40px; color:var(--accent-success);"></i>
+                        </div>
+                        <h2>Payment Successful!</h2>
+                        <p class="text-muted mt-2 mb-6">Thank you for your purchase. Your original files are ready to download.</p>
+                        <a href="/account?tab=downloads" class="btn btn-primary"><i data-lucide="download"></i> Go to My Downloads</a>
+                    `;
+                    App.updateCartCount(); // Refresh cart to 0
+                } else {
+                    statusView.innerHTML = `
+                        <div style="background: rgba(239, 68, 68, 0.1); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;">
+                            <i data-lucide="x" style="width:40px; height:40px; color:var(--accent-danger);"></i>
+                        </div>
+                        <h2>Payment Incomplete</h2>
+                        <p class="text-muted mt-2 mb-6">Your payment was not completed or is still pending.</p>
+                        <a href="/cart" class="btn btn-secondary">Return to Cart</a>
+                    `;
+                }
+                if (window.lucide) lucide.createIcons({ root: statusView });
+            } catch (err) {
+                statusView.innerHTML = `
+                    <i data-lucide="alert-triangle" style="width:64px; height:64px; color:var(--accent-danger); margin: 0 auto 24px;"></i>
+                    <h2>Verification Error</h2>
+                    <p class="text-muted mt-2 mb-6">${err.message}</p>
+                    <a href="/account" class="btn btn-secondary">Go to Account</a>
+                `;
+                if (window.lucide) lucide.createIcons({ root: statusView });
+            }
+        }
+    </script>
+</body>
+</html>

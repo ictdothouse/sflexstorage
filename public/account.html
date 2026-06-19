@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Account | PhotoVault</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/gallery.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .account-container {
+            padding: var(--space-8) 0;
+            margin-top: 80px;
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: var(--space-8);
+            min-height: calc(100vh - 160px);
+        }
+        @media (max-width: 900px) {
+            .account-container { grid-template-columns: 1fr; }
+        }
+        .sidebar-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            background: var(--bg-surface);
+            padding: var(--space-4);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-subtle);
+            position: sticky;
+            top: 100px;
+        }
+        .menu-item {
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .menu-item:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+        .menu-item.active { background: var(--bg-elevated); color: var(--accent-primary); border-left: 3px solid var(--accent-primary); }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+        
+        /* Table Styles */
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 16px; text-align: left; border-bottom: 1px solid var(--border-subtle); }
+        th { color: var(--text-muted); font-weight: 600; font-size: 0.875rem; text-transform: uppercase; }
+        tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+        .stat-card {
+            background: var(--bg-elevated);
+            padding: var(--space-6);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-strong);
+        }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="/" class="logo"><i data-lucide="aperture" class="logo-icon"></i>PhotoVault</a>
+            <nav class="nav-links">
+                <a href="/gallery">Discover</a>
+                <a href="/subscription">Pricing</a>
+                <a href="/cart" class="cart-icon" style="position: relative;"><i data-lucide="shopping-cart"></i><span class="cart-count hidden" style="position:absolute; top:-8px; right:-12px; background:var(--accent-danger); color:white; font-size:10px; padding:2px 6px; border-radius:10px; font-weight:bold;">0</span></a>
+                <a href="#" class="btn-logout text-danger flex items-center gap-2"><i data-lucide="log-out"></i> Logout</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container account-container">
+        <!-- Sidebar -->
+        <aside>
+            <div class="sidebar-menu">
+                <div class="p-4 mb-4 border-b" style="border-color: var(--border-subtle);">
+                    <div class="font-bold text-lg" id="sidebar-name">User Name</div>
+                    <div class="text-sm text-muted" id="sidebar-email">user@example.com</div>
+                    <span id="sidebar-role" class="badge badge-gold mt-2 hidden">Admin</span>
+                </div>
+                
+                <div class="menu-item active" data-tab="dashboard"><i data-lucide="layout-dashboard"></i> Dashboard</div>
+                <div class="menu-item" data-tab="downloads"><i data-lucide="download"></i> My Downloads</div>
+                <div class="menu-item" data-tab="favorites"><i data-lucide="heart"></i> Favorites</div>
+                <div class="menu-item" data-tab="orders"><i data-lucide="receipt"></i> Order History</div>
+            </div>
+        </aside>
+
+        <!-- Content Area -->
+        <div class="content-area">
+            
+            <!-- Dashboard Tab -->
+            <div id="tab-dashboard" class="tab-content active">
+                <h2 class="mb-6">Dashboard</h2>
+                
+                <div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); margin-bottom: var(--space-8);">
+                    <div class="stat-card">
+                        <h4 class="text-muted mb-2">Active Subscription</h4>
+                        <div id="sub-status-box">Loading...</div>
+                    </div>
+                </div>
+
+                <div class="glass-panel">
+                    <h3 class="mb-4">Profile Details</h3>
+                    <form id="profile-form">
+                        <div class="form-group">
+                            <label class="form-label">Full Name</label>
+                            <input type="text" id="prof-name" class="form-control" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input type="email" id="prof-email" class="form-control" disabled>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Downloads Tab -->
+            <div id="tab-downloads" class="tab-content">
+                <h2 class="mb-6">My Downloads</h2>
+                <div class="glass-panel" style="padding: 0;">
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Photo</th><th>Order/Date</th><th>Resolution</th><th>Action</th></tr></thead>
+                            <tbody id="downloads-tbody"><tr><td colspan="4" class="text-center py-8"><i data-lucide="loader-2" class="spin"></i> Loading...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Favorites Tab -->
+            <div id="tab-favorites" class="tab-content">
+                <h2 class="mb-6">Favorites</h2>
+                <div class="gallery-container layout-grid" id="favorites-grid">
+                    <div class="text-center py-8 w-full" style="grid-column: 1/-1;"><i data-lucide="loader-2" class="spin"></i> Loading...</div>
+                </div>
+            </div>
+
+            <!-- Orders Tab -->
+            <div id="tab-orders" class="tab-content">
+                <h2 class="mb-6">Order History</h2>
+                <div class="glass-panel" style="padding: 0;">
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Order #</th><th>Date</th><th>Amount</th><th>Status</th><th>Gateway</th></tr></thead>
+                            <tbody id="orders-tbody"><tr><td colspan="5" class="text-center py-8"><i data-lucide="loader-2" class="spin"></i> Loading...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script src="/js/utils.js"></script>
+    <script src="/js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (window.lucide) lucide.createIcons();
+            await App.init();
+            
+            if (!App.user) {
+                window.location.href = '/login?redirect=/account';
+                return;
+            }
+
+            // Populate Sidebar info
+            document.getElementById('sidebar-name').textContent = App.user.full_name || App.user.username;
+            document.getElementById('sidebar-email').textContent = App.user.email;
+            if (App.user.role === 'admin') document.getElementById('sidebar-role').classList.remove('hidden');
+
+            // Populate Profile form
+            document.getElementById('prof-name').value = App.user.full_name || App.user.username;
+            document.getElementById('prof-email').value = App.user.email;
+
+            // Tab Switching Logic
+            const menuItems = document.querySelectorAll('.menu-item');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            function switchTab(tabId) {
+                menuItems.forEach(item => item.classList.remove('active'));
+                tabContents.forEach(tab => tab.classList.remove('active'));
+                
+                const activeItem = document.querySelector(`.menu-item[data-tab="${tabId}"]`);
+                const activeContent = document.getElementById(`tab-${tabId}`);
+                
+                if (activeItem && activeContent) {
+                    activeItem.classList.add('active');
+                    activeContent.classList.add('active');
+                    loadTabData(tabId);
+                }
+            }
+
+            menuItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    const tab = item.dataset.tab;
+                    switchTab(tab);
+                    // Update URL hash without scroll
+                    history.replaceState(null, null, `#${tab}`);
+                });
+            });
+
+            // Initial load based on URL hash or param
+            const urlParams = new URLSearchParams(window.location.search);
+            const initialTab = urlParams.get('tab') || window.location.hash.replace('#', '') || 'dashboard';
+            switchTab(initialTab);
+        });
+
+        async function loadTabData(tabId) {
+            try {
+                if (tabId === 'dashboard') await loadDashboard();
+                if (tabId === 'downloads') await loadDownloads();
+                if (tabId === 'favorites') await loadFavorites();
+                if (tabId === 'orders') await loadOrders();
+            } catch (err) {
+                window.utils.showToast(err.message, 'error');
+            }
+        }
+
+        async function loadDashboard() {
+            const subBox = document.getElementById('sub-status-box');
+            try {
+                const res = await window.utils.api.get('/subscriptions/status');
+                if (res.active && res.plan) {
+                    const expiry = res.plan.expiry ? window.utils.formatDate(res.plan.expiry) : 'Never';
+                    subBox.innerHTML = `
+                        <div class="text-2xl font-bold text-accent-primary mb-2">${res.plan.name}</div>
+                        <p class="text-sm text-secondary mb-1">Downloads: ${res.plan.downloads_used} / ${res.plan.downloads_remaining === 'unlimited' ? '∞' : (res.plan.downloads_used + res.plan.downloads_remaining)}</p>
+                        <p class="text-sm text-secondary mb-4">Expires: ${expiry}</p>
+                        <button class="btn btn-secondary btn-sm" onclick="cancelSubscription()">Cancel Plan</button>
+                    `;
+                } else {
+                    subBox.innerHTML = `
+                        <p class="mb-4">You don't have an active subscription plan.</p>
+                        <a href="/subscription" class="btn btn-primary">View Plans</a>
+                    `;
+                }
+            } catch (err) {
+                subBox.innerHTML = '<span class="text-danger">Failed to load status</span>';
+            }
+        }
+
+        async function loadDownloads() {
+            const tbody = document.getElementById('downloads-tbody');
+            try {
+                const res = await window.utils.api.get('/auth/downloads');
+                if (res.downloads.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8">No downloads found. Purchase photos to see them here.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = res.downloads.map(d => `
+                    <tr>
+                        <td>
+                            <div class="flex items-center gap-4">
+                                <img src="/api/images/${d.image_id}/thumbnail" style="width: 60px; height: 45px; object-fit:cover; border-radius:4px;">
+                                <div>
+                                    <div class="font-bold">${d.title}</div>
+                                    <div class="text-xs text-muted">${d.license_type}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${d.order_number || 'Subscription'}<br><span class="text-xs text-muted">${window.utils.formatDate(d.downloaded_at)}</span></td>
+                        <td>${d.width} × ${d.height} px</td>
+                        <td>
+                            <a href="/api/images/${d.image_id}/original" class="btn btn-primary" download style="padding: 6px 12px; font-size: 0.85rem;">
+                                <i data-lucide="download" style="width:14px;height:14px;"></i> Download
+                            </a>
+                        </td>
+                    </tr>
+                `).join('');
+                if (window.lucide) lucide.createIcons({root: tbody});
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-danger">${err.message}</td></tr>`;
+            }
+        }
+
+        async function loadFavorites() {
+            const grid = document.getElementById('favorites-grid');
+            try {
+                const res = await window.utils.api.get('/auth/favorites');
+                if (res.favorites.length === 0) {
+                    grid.innerHTML = '<div class="glass-panel text-center py-12 w-full" style="grid-column: 1/-1;">You have no favorite photos yet.</div>';
+                    return;
+                }
+                grid.innerHTML = res.favorites.map(f => `
+                    <div class="photo-item animate-slide-up">
+                        <img src="/api/images/${f.image_id}/thumbnail" alt="${f.title}" onclick="window.location.href = '/image?id=${f.image_id}'">
+                        <div class="photo-overlay" onclick="window.location.href = '/image?id=${f.image_id}'">
+                            <div class="photo-info"><h4>${f.title}</h4></div>
+                        </div>
+                        <div class="photo-actions">
+                            <button class="action-btn favorite-btn active" data-image-id="${f.image_id}" title="Remove Favorite">
+                                <i data-lucide="heart" fill="currentColor"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+                if (window.lucide) lucide.createIcons({root: grid});
+            } catch (err) {
+                grid.innerHTML = `<div class="text-center py-12 text-danger w-full" style="grid-column: 1/-1;">${err.message}</div>`;
+            }
+        }
+
+        async function loadOrders() {
+            const tbody = document.getElementById('orders-tbody');
+            try {
+                const res = await window.utils.api.get('/auth/orders');
+                if (res.orders.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8">No orders found.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = res.orders.map(o => `
+                    <tr>
+                        <td class="font-bold">${o.order_number}</td>
+                        <td>${window.utils.formatDate(o.created_at)}</td>
+                        <td>${window.utils.formatCurrency(o.total_amount)}</td>
+                        <td><span class="badge" style="background:${o.status==='paid'?'rgba(16,185,129,0.2)':'rgba(245,158,11,0.2)'}; color:${o.status==='paid'?'var(--accent-success)':'var(--accent-tertiary)'};">${o.status.toUpperCase()}</span></td>
+                        <td>${o.payment_gateway.toUpperCase()}</td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-danger">${err.message}</td></tr>`;
+            }
+        }
+
+        async function cancelSubscription() {
+            if (confirm('Are you sure you want to cancel your subscription? You will lose download access immediately.')) {
+                try {
+                    await window.utils.api.post('/subscriptions/cancel');
+                    window.utils.showToast('Subscription cancelled');
+                    loadDashboard();
+                } catch (err) {
+                    window.utils.showToast(err.message, 'error');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

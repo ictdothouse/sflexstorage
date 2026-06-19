@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | PhotoVault</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { background: var(--bg-base); display: flex; flex-direction: row !important; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar */
+        .admin-sidebar { width: 260px; background: var(--bg-surface); border-right: 1px solid var(--border-subtle); display: flex; flex-direction: column; }
+        .admin-logo { padding: 24px; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; gap: 12px; font-weight: bold; font-size: 1.2rem; }
+        .admin-nav { padding: 16px 12px; flex: 1; overflow-y: auto; }
+        .nav-item { padding: 12px 16px; display: flex; align-items: center; gap: 12px; color: var(--text-secondary); border-radius: 8px; cursor: pointer; transition: all 0.2s; margin-bottom: 4px; }
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+        .nav-item.active { background: rgba(124, 58, 237, 0.1); color: var(--accent-primary); font-weight: 600; }
+        
+        /* Main Content */
+        .admin-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .admin-header { height: 70px; background: var(--bg-surface); border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
+        .admin-content { flex: 1; overflow-y: auto; padding: 24px; }
+        
+        /* Dashboard Stats */
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; margin-bottom: 32px; }
+        .stat-card { background: var(--bg-elevated); padding: 20px; border-radius: 12px; border: 1px solid var(--border-strong); }
+        .stat-card-title { color: var(--text-muted); font-size: 0.875rem; text-transform: uppercase; margin-bottom: 8px; font-weight: 600; }
+        .stat-card-value { font-size: 2rem; font-weight: bold; font-family: var(--font-display); }
+
+        /* Tables */
+        .table-wrapper { background: var(--bg-elevated); border-radius: 12px; border: 1px solid var(--border-strong); overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 16px; border-bottom: 1px solid var(--border-subtle); }
+        th { background: rgba(0,0,0,0.2); color: var(--text-muted); font-weight: 600; font-size: 0.875rem; text-transform: uppercase; }
+        tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+        /* Tagging UI */
+        .face-groups-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 24px; }
+        .face-group-card { background: var(--bg-elevated); border: 1px solid var(--border-strong); border-radius: 12px; padding: 16px; }
+        .face-preview-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-bottom: 16px; border-radius: 8px; overflow: hidden; }
+        .face-preview-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; }
+        
+        .view-section { display: none; }
+        .view-section.active { display: block; animation: fadeIn 0.3s ease; }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <aside class="admin-sidebar">
+        <a href="/" class="admin-logo text-white" style="text-decoration:none;">
+            <i data-lucide="aperture" style="color:var(--accent-primary);"></i> PhotoVault Admin
+        </a>
+        <nav class="admin-nav">
+            <div class="nav-item active" data-target="dashboard"><i data-lucide="layout-dashboard"></i> Dashboard</div>
+            <div class="nav-item" data-target="upload"><i data-lucide="upload-cloud"></i> Upload Images</div>
+            <div class="nav-item" data-target="galleries"><i data-lucide="images"></i> Galleries</div>
+            <div class="nav-item" data-target="faces"><i data-lucide="scan-face"></i> Person Tagging</div>
+            <div class="nav-item" data-target="pages"><i data-lucide="file-text"></i> Manage Pages</div>
+            <div class="nav-item" data-target="orders"><i data-lucide="shopping-bag"></i> Orders</div>
+            <div class="nav-item" data-target="users"><i data-lucide="users"></i> Users</div>
+            <div class="nav-item" data-target="settings">
+                <i data-lucide="settings"></i> Settings
+            </div>
+            <div class="nav-item" data-target="cloud-r2">
+                <i data-lucide="cloud"></i> Cloud R2 Settings
+            </div>
+            <div class="nav-item" data-target="cloud-drive">
+                <i data-lucide="hard-drive"></i> Cloud Drive Settings
+            </div>
+        </nav>
+        <div style="padding: 16px;">
+            <a href="/account" class="btn btn-ghost" style="width:100%;"><i data-lucide="arrow-left"></i> Exit Admin</a>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="admin-main">
+        <header class="admin-header">
+            <h2 id="header-title" style="margin:0; font-size:1.5rem;">Dashboard</h2>
+            <div class="flex items-center gap-4">
+                <span id="ai-status-badge" class="badge badge-gold hidden" style="background: rgba(16,185,129,0.2); color: var(--accent-success); border-color: rgba(16,185,129,0.3);"><i data-lucide="cpu" style="width:12px;height:12px;display:inline;margin-right:4px;"></i> AI Model Loaded</span>
+                <span class="badge badge-gold" id="admin-user-name">Admin</span>
+            </div>
+        </header>
+
+        <div class="admin-content">
+            
+            <!-- Dashboard View -->
+            <div id="view-dashboard" class="view-section active">
+                <div class="stat-grid" id="dashboard-stats">
+                    <!-- Stats loaded via JS -->
+                    <div class="stat-card"><div class="stat-card-title">Loading</div><div class="stat-card-value">-</div></div>
+                </div>
+            </div>
+            <!-- Cloud R2 Settings View -->
+            <div id="view-cloud-r2" class="view-section">
+                <h3>Cloudflare R2 Settings</h3>
+                <form id="cloud-r2-form" class="glass-panel" style="max-width:600px;">
+                    <div class="form-group">
+                        <label class="form-label">Account ID</label>
+                        <input type="text" id="r2-account-id" class="form-control" placeholder="e.g. 1a2b3c4d5e6f7g8h9i0j..." />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Access Key</label>
+                        <input type="password" id="r2-access-key" class="form-control" />
+                        <span class="toggle-visibility" data-target="r2-access-key" style="cursor:pointer; margin-left:8px;">👁️</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Secret Key</label>
+                        <input type="password" id="r2-secret-key" class="form-control" />
+                        <span class="toggle-visibility" data-target="r2-secret-key" style="cursor:pointer; margin-left:8px;">👁️</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Bucket Name</label>
+                        <input type="text" id="r2-bucket" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Public Bucket URL</label>
+                        <input type="text" id="r2-public-url" class="form-control" placeholder="e.g. https://pub-12345.r2.dev" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Enable Schedule</label>
+                        <input type="checkbox" id="r2-schedule-enabled" />
+                    </div>
+                    <div class="form-group" id="r2-cron-group" style="display:none;">
+                        <label class="form-label">Cron Expression</label>
+                        <input type="text" id="r2-cron" class="form-control" placeholder="* * * * *" />
+                    </div>
+                    <div style="display:flex; align-items:center; gap:12px; margin-top:8px; margin-bottom:16px;">
+                        <button type="button" class="btn btn-ghost" id="btn-test-r2" style="border: 1px solid var(--border-strong); padding: 8px 16px; font-size:0.875rem;">🔌 Test Connection</button>
+                        <span id="r2-conn-status" style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; padding:4px 10px; border-radius:20px; background: var(--bg-secondary); border: 1px solid var(--border);"><span id="r2-conn-dot" style="width:8px;height:8px;border-radius:50%;background:#666;display:inline-block;"></span><span id="r2-conn-label">Unknown</span></span>
+                    </div>
+                    <button type="button" class="btn btn-primary" id="btn-save-r2">Save Settings</button>
+                </form>
+
+                <div class="glass-panel" style="max-width:600px; margin-top:24px;">
+                    <h4>Manual Operations</h4>
+                    <p class="text-muted" style="font-size:0.875rem;">Move original images to tiered cloud storage or restore them to local storage.</p>
+                    <div style="display:flex; gap:12px; margin-top:16px;">
+                        <button type="button" class="btn btn-secondary" id="btn-cloud-offload">Offload to Cloud</button>
+                        <button type="button" class="btn btn-ghost" id="btn-cloud-restore" style="border: 1px solid var(--border-strong);">Restore to Local</button>
+                    </div>
+                    <div id="cloud-op-status" class="mt-4 text-sm" style="display:none; padding:12px; border-radius:6px;"></div>
+                </div>
+            </div>
+            <!-- Cloud Drive Settings View -->
+            <div id="view-cloud-drive" class="view-section">
+                <h3>Google Drive Settings</h3>
+                <form id="cloud-drive-form" class="glass-panel" style="max-width:600px;">
+                    <div class="form-group">
+                        <label class="form-label">Client ID</label>
+                        <input type="text" id="gdrive-client-id" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Client Secret</label>
+                        <input type="password" id="gdrive-client-secret" class="form-control" />
+                        <span class="toggle-visibility" data-target="gdrive-client-secret" style="cursor:pointer; margin-left:8px;">👁️</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Refresh Token</label>
+                        <input type="password" id="gdrive-refresh-token" class="form-control" />
+                        <span class="toggle-visibility" data-target="gdrive-refresh-token" style="cursor:pointer; margin-left:8px;">👁️</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Backup Folder ID</label>
+                        <input type="text" id="gdrive-folder-id" class="form-control" placeholder="Google Drive Folder ID (optional)" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Enable Google Drive Backup</label>
+                        <input type="checkbox" id="gdrive-backup-enabled" />
+                    </div>
+                    <button type="button" class="btn btn-primary" id="btn-save-gdrive">Save Settings</button>
+                </form>
+            </div>
+
+            <!-- Upload Images View -->
+            <div id="view-upload" class="view-section">
+                <h3>Upload Images</h3>
+                <p class="text-muted mb-6">Drag and drop images here. AI will scan for faces before uploading.</p>
+                
+                <div class="glass-panel mb-6">
+                    <form id="upload-form">
+                        <div class="form-group">
+                            <label class="form-label">Select Gallery (Optional)</label>
+                            <select id="upload-gallery" class="form-control">
+                                <option value="">-- No Gallery --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Price (RM)</label>
+                            <input type="number" step="0.01" id="upload-price" class="form-control" value="10.00">
+                        </div>
+                    </form>
+                </div>
+
+                <div id="drop-zone" class="glass-panel text-center" style="border: 2px dashed var(--border-strong); padding: 48px 24px; cursor: pointer; transition: all 0.3s ease;">
+                    <i data-lucide="upload-cloud" style="width: 48px; height: 48px; color: var(--accent-primary); margin-bottom: 16px;"></i>
+                    <h4 class="mb-2">Drag & Drop Images</h4>
+                    <p class="text-muted">or click to browse files</p>
+                    <input type="file" id="file-input" multiple accept="image/*" style="display: none;">
+                </div>
+
+                <div id="upload-preview" class="mt-8">
+                    <!-- Upload items progress injected here -->
+                </div>
+            </div>
+
+            <!-- Galleries View -->
+            <div id="view-galleries" class="view-section">
+                <div class="flex justify-between items-center mb-6">
+                    <h3>Manage Galleries</h3>
+                    <button class="btn btn-primary" id="btn-new-gallery">
+                        <i data-lucide="plus"></i> New Gallery
+                    </button>
+                </div>
+
+                <!-- Create Gallery Form (hidden by default) -->
+                <div id="create-gallery-form" style="display:none; margin-bottom:24px;">
+                    <div class="glass-panel" style="border:1px solid var(--accent-primary);">
+                        <h4 style="margin-bottom:16px;">Create New Gallery</h4>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                            <div class="form-group">
+                                <label class="form-label">Title *</label>
+                                <input type="text" id="new-gallery-title" class="form-control" placeholder="e.g. Wedding 2024">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Parent Gallery</label>
+                                <select id="new-gallery-parent" class="form-control">
+                                    <option value="">-- None --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Access Level</label>
+                                <select id="new-gallery-access" class="form-control" onchange="document.getElementById('new-gallery-password-group').style.display = this.value === 'private' ? 'block' : 'none'">
+                                    <option value="public">Public</option>
+                                    <option value="private">Private (Password Required)</option>
+                                    <option value="url_only">URL Only</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="new-gallery-password-group" style="display:none;">
+                                <label class="form-label">Password</label>
+                                <input type="password" id="new-gallery-password" class="form-control" placeholder="Enter password">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Layout</label>
+                                <select id="new-gallery-layout" class="form-control">
+                                    <option value="masonry">Masonry</option>
+                                    <option value="grid">Grid</option>
+                                    <option value="mosaic">Mosaic</option>
+                                    <option value="justified">Justified</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Expires At (Optional)</label>
+                                <input type="datetime-local" id="new-gallery-expires" class="form-control">
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label class="form-label">Description</label>
+                                <input type="text" id="new-gallery-desc" class="form-control" placeholder="Optional description">
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:12px;margin-top:16px;">
+                            <button class="btn btn-primary" id="btn-save-gallery">
+                                <i data-lucide="save"></i> Save Gallery
+                            </button>
+                            <button class="btn btn-ghost" id="btn-cancel-gallery">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Slug</th>
+                                <th>Images</th>
+                                <th>Access</th>
+                                <th>Layout</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="galleries-tbody">
+                            <tr><td colspan="7" class="text-center">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pages (CMS) View -->
+            <div id="view-pages" class="view-section">
+                <div class="flex justify-between items-center mb-6">
+                    <h3>Manage Pages</h3>
+                    <button class="btn btn-primary" id="btn-new-page">
+                        <i data-lucide="plus"></i> New Page
+                    </button>
+                </div>
+
+                <!-- Page Builder Modal / Inline -->
+                <div id="page-builder-form" style="display:none; margin-bottom:24px;">
+                    <div class="glass-panel" style="border:1px solid var(--accent-primary);">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 id="page-builder-title">Create Page</h4>
+                            <div>
+                                <button class="btn btn-primary" id="btn-save-page"><i data-lucide="save"></i> Save Page</button>
+                                <button class="btn btn-ghost" id="btn-cancel-page">Close</button>
+                            </div>
+                        </div>
+                        
+                        <input type="hidden" id="edit-page-id" value="">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
+                            <div class="form-group">
+                                <label class="form-label">Page Title</label>
+                                <input type="text" id="page-title" class="form-control" placeholder="e.g. About Us">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">URL Slug</label>
+                                <input type="text" id="page-slug" class="form-control" placeholder="e.g. about (leave empty to auto-generate)">
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-4 mb-6">
+                            <label style="display:flex;align-items:center;gap:8px;">
+                                <input type="checkbox" id="page-published" checked> Published
+                            </label>
+                            <label style="display:flex;align-items:center;gap:8px;color:var(--accent-tertiary);">
+                                <input type="checkbox" id="page-homepage"> Set as Homepage
+                            </label>
+                        </div>
+
+                        <hr style="border-color:var(--border-subtle); margin:24px 0;">
+                        
+                        <h5>Page Builder Blocks</h5>
+                        <div style="display:flex; gap:8px; margin-bottom:16px; margin-top:8px;">
+                            <button class="btn btn-secondary btn-add-block" data-type="hero"><i data-lucide="image"></i> Add Hero</button>
+                            <button class="btn btn-secondary btn-add-block" data-type="stats"><i data-lucide="bar-chart"></i> Add Stats</button>
+                            <button class="btn btn-secondary btn-add-block" data-type="gallery_grid"><i data-lucide="grid"></i> Add Gallery Grid</button>
+                            <button class="btn btn-secondary btn-add-block" data-type="text"><i data-lucide="type"></i> Add Text</button>
+                            <button class="btn btn-secondary btn-add-block" data-type="web_banner"><i data-lucide="monitor"></i> Add Web Banner</button>
+                            <button class="btn btn-secondary btn-add-block" data-type="carousel"><i data-lucide="sliders"></i> Add Carousel</button>
+                            <button class="btn btn-secondary btn-add-block" data-type="grid_row"><i data-lucide="layout"></i> Add Grid Row</button>
+                        </div>
+
+                        <div id="page-blocks-container" style="display:flex;flex-direction:column;gap:12px;min-height:100px;background:rgba(0,0,0,0.2);padding:16px;border-radius:8px;">
+                            <!-- Blocks will be added here via JS -->
+                            <div class="text-center text-muted" id="empty-blocks-msg">No blocks added yet. Click above to add content blocks.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Slug</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pages-tbody">
+                            <tr><td colspan="5" class="text-center">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Person Tagging View -->
+            <div id="view-faces" class="view-section">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3>Person Tagging (AI)</h3>
+                        <p class="text-muted text-sm mt-1">Review AI-clustered faces and assign names to them.</p>
+                    </div>
+                </div>
+
+                <!-- AI Disclaimer -->
+                <div style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); border-radius:var(--radius-md); padding:16px; margin-bottom:24px; display:flex; gap:12px; align-items:flex-start;">
+                    <i data-lucide="alert-triangle" style="width:20px; height:20px; color:var(--accent-tertiary); flex-shrink:0; margin-top:2px;"></i>
+                    <div style="font-size:0.875rem; color:var(--text-secondary); line-height:1.6;">
+                        <strong style="color:var(--accent-tertiary);">AI Auto-Tag Disclaimer:</strong>
+                        Auto-tagging may not always be accurate. Small or low-quality images can produce less reliable results.
+                        AI can sometimes make mistakes — please review all clusters carefully. You can manually select, deselect, merge clusters, or delete incorrect groupings.
+                    </div>
+                </div>
+
+                <!-- Tabs for Tagging -->
+                <div class="flex gap-4 mb-6" style="border-bottom: 1px solid var(--border-subtle); padding-bottom: 16px;">
+                    <button class="btn btn-primary" id="btn-tab-ungrouped">Pending Tagging</button>
+                    <button class="btn btn-ghost" id="btn-tab-people">Tagged People</button>
+                </div>
+
+                <!-- Pending Tagging Grid -->
+                <div id="faces-pending-container">
+                    <div class="face-groups-grid" id="face-groups-grid">
+                        <div class="text-center w-full py-12" style="grid-column: 1/-1;"><i data-lucide="loader-2" class="spin"></i> Analyzing face clusters...</div>
+                    </div>
+                </div>
+
+                <!-- Tagged People List -->
+                <div id="faces-people-container" class="hidden">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Person Name</th><th>Images Count</th><th>Actions</th></tr></thead>
+                            <tbody id="people-tbody"><tr><td colspan="3" class="text-center">Loading...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Orders View -->
+            <div id="view-orders" class="view-section">
+                <h3>Recent Orders</h3>
+                <div class="table-wrapper mt-4">
+                    <table>
+                        <thead><tr><th>Order #</th><th>User</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+                        <tbody id="orders-tbody"><tr><td colspan="5" class="text-center">Loading...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Users View -->
+            <div id="view-users" class="view-section">
+                <h3>Users</h3>
+                <div class="table-wrapper mt-4">
+                    <table>
+                        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Orders</th><th>Joined</th><th>Actions</th></tr></thead>
+                        <tbody id="users-tbody"><tr><td colspan="6" class="text-center">Loading...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- User Detail Modal -->
+            <div id="user-detail-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center;">
+                <div class="glass-panel" style="width:100%; max-width:700px; padding:24px; max-height:90vh; overflow-y:auto; display:flex; flex-direction:column;">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 id="user-detail-name">User Details</h3>
+                        <button class="btn btn-ghost" onclick="document.getElementById('user-detail-modal').style.display='none'"><i data-lucide="x"></i></button>
+                    </div>
+                    
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px;">
+                        <div class="glass-panel" style="background:rgba(255,255,255,0.02);">
+                            <h5 style="margin-bottom:12px; color:var(--text-secondary);">Account Info</h5>
+                            <p><strong>Email:</strong> <span id="user-detail-email"></span></p>
+                            <p><strong>Role:</strong> <span id="user-detail-role" style="text-transform:uppercase;"></span></p>
+                            <p><strong>Joined:</strong> <span id="user-detail-joined"></span></p>
+                        </div>
+                        <div class="glass-panel" style="background:rgba(255,255,255,0.02);">
+                            <h5 style="margin-bottom:12px; color:var(--text-secondary);">Subscription</h5>
+                            <p><strong>Plan:</strong> <span id="user-detail-plan"></span></p>
+                            <p><strong>Downloads:</strong> <span id="user-detail-downloads"></span></p>
+                            <p><strong>Expiry:</strong> <span id="user-detail-expiry"></span></p>
+                        </div>
+                    </div>
+                    
+                    <h5 style="margin-bottom:12px; color:var(--text-secondary);">Recent Orders</h5>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Order #</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+                            <tbody id="user-detail-orders"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div id="view-settings" class="view-section" >
+                <h3>System Settings</h3>
+                <p class="text-muted mb-6">Configure payment gateways, subscription plans, and system preferences.</p>
+
+                <!-- Settings Tabs -->
+                <div class="flex gap-4 mb-6" style="border-bottom:1px solid var(--border-subtle); padding-bottom:16px;">
+                    <button class="btn btn-primary" id="btn-settings-payment">Payment Gateways</button>
+                    <button class="btn btn-ghost" id="btn-settings-subs">Subscription Plans</button>
+                </div>
+
+                <!-- Payment Gateways Section -->
+                <div id="settings-payment-container">
+                    <div id="payment-gateways-list">
+                        <div class="text-center py-8"><i data-lucide="loader-2" class="spin"></i> Loading gateways...</div>
+                    </div>
+                </div>
+
+                <!-- Subscription Plans Section -->
+                <div id="settings-subs-container" class="hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4>Subscription Plans</h4>
+                        <button class="btn btn-primary" id="btn-add-sub-plan"><i data-lucide="plus"></i> Add Plan</button>
+                    </div>
+                    <div id="sub-plan-form" class="glass-panel mb-6" style="display:none; border:1px solid var(--accent-primary);">
+                        <h5 id="sub-plan-form-title">Add Plan</h5>
+                        <input type="hidden" id="sub-plan-id" value="">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
+                            <div class="form-group"><label class="form-label">Plan Name</label><input type="text" id="sub-plan-name" class="form-control" placeholder="e.g. Pro"></div>
+                            <div class="form-group"><label class="form-label">Description</label><input type="text" id="sub-plan-desc" class="form-control" placeholder="Short description"></div>
+                            <div class="form-group"><label class="form-label">Monthly Price (RM)</label><input type="number" step="0.01" id="sub-plan-price-m" class="form-control" value="29"></div>
+                            <div class="form-group"><label class="form-label">Yearly Price (RM)</label><input type="number" step="0.01" id="sub-plan-price-y" class="form-control" value="290"></div>
+                            <div class="form-group"><label class="form-label">Downloads / Month (-1 = Unlimited)</label><input type="number" id="sub-plan-downloads" class="form-control" value="10"></div>
+                            <div class="form-group"><label class="form-label">Sort Order</label><input type="number" id="sub-plan-order" class="form-control" value="0"></div>
+                        </div>
+                        <div class="form-group"><label class="form-label">Features (one per line)</label><textarea id="sub-plan-features" class="form-control" rows="3" placeholder="Feature 1&#10;Feature 2"></textarea></div>
+                        <div class="flex gap-4 mt-4">
+                            <button class="btn btn-primary" id="btn-save-sub-plan">Save Plan</button>
+                            <button class="btn btn-ghost" id="btn-cancel-sub-plan">Cancel</button>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Plan</th><th>Monthly</th><th>Yearly</th><th>Downloads</th><th>Status</th><th>Actions</th></tr></thead>
+                            <tbody id="sub-plans-tbody"><tr><td colspan="6" class="text-center">Loading...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Load face-api.js from CDN -->
+    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
+
+    <script src="/js/utils.js"></script>
+    <script src="/js/app.js"></script>
+    <script src="/admin/js/admin.js"></script>
+    
+    <!-- Cluster Review Modal -->
+    <div id="cluster-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center;">
+        <div class="glass-panel" style="width:100%; max-width:650px; padding:24px; max-height:90vh; display:flex; flex-direction:column;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="cluster-modal-title">Review Faces</h3>
+                <button class="btn btn-ghost" onclick="document.getElementById('cluster-modal').style.display='none'"><i data-lucide="x"></i></button>
+            </div>
+            <!-- AI Disclaimer inside modal -->
+            <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2); border-radius:6px; padding:10px 14px; margin-bottom:12px; font-size:0.8rem; color:var(--text-muted); display:flex; gap:8px; align-items:center;">
+                <i data-lucide="info" style="width:14px; height:14px; flex-shrink:0; color:var(--accent-tertiary);"></i>
+                AI grouping may be inaccurate. Uncheck wrong faces before tagging, or merge them to another person.
+            </div>
+            <div id="cluster-faces-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(100px, 1fr)); gap:12px; overflow-y:auto; flex:1; margin-bottom:16px;">
+                <!-- Checkbox faces injected here -->
+            </div>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <!-- Tag as new person -->
+                <div style="display:flex; gap:8px;">
+                    <input type="text" class="form-control" id="cluster-modal-input" placeholder="Enter name (e.g. Ronaldo)" style="flex:1;">
+                    <button class="btn btn-primary" id="btn-cluster-tag">Tag Selected</button>
+                </div>
+                <!-- Or merge to existing person -->
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <span style="font-size:0.8rem; color:var(--text-muted); white-space:nowrap;">Or merge to:</span>
+                    <select class="form-control" id="cluster-merge-select" style="flex:1;">
+                        <option value="">-- Select existing person --</option>
+                    </select>
+                    <button class="btn btn-secondary" id="btn-cluster-merge">Merge</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Media Selector Modal -->
+    <div id="media-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1100; align-items:center; justify-content:center;">
+        <div class="glass-panel" style="width:100%; max-width:800px; padding:24px; max-height:90vh; display:flex; flex-direction:column;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="media-modal-title">Select Media</h3>
+                <button class="btn btn-ghost" onclick="document.getElementById('media-modal').style.display='none'"><i data-lucide="x"></i></button>
+            </div>
+            
+            <div class="flex gap-4 mb-4">
+                <input type="text" id="media-search" class="form-control" placeholder="Search images..." style="flex:1;">
+                <button class="btn btn-primary" onclick="document.getElementById('media-upload-input').click()"><i data-lucide="upload"></i> Upload New</button>
+                <input type="file" id="media-upload-input" accept="image/*" style="display:none;" onchange="window.adminPanel.uploadMedia(this.files)">
+            </div>
+
+            <div id="media-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:12px; overflow-y:auto; flex:1; margin-bottom:16px;">
+                <!-- Images injected here -->
+                <div class="text-center w-full py-12" style="grid-column: 1/-1;"><i data-lucide="loader-2" class="spin"></i> Loading media...</div>
+            </div>
+            
+            <div style="display:flex; justify-content:flex-end; gap:12px; border-top:1px solid var(--border-subtle); padding-top:16px;">
+                <button class="btn btn-ghost" onclick="document.getElementById('media-modal').style.display='none'">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

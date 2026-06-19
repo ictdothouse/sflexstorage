@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log In | PhotoVault</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .auth-container {
+            min-height: calc(100vh - 80px); /* Minus header */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-8);
+            margin-top: 80px;
+        }
+        .auth-card {
+            width: 100%;
+            max-width: 440px;
+        }
+        .auth-header {
+            text-align: center;
+            margin-bottom: var(--space-8);
+        }
+        .auth-header i {
+            width: 48px; height: 48px;
+            color: var(--accent-primary);
+            margin-bottom: var(--space-4);
+        }
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: var(--space-6) 0;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border-strong);
+        }
+        .divider::before { margin-right: var(--space-4); }
+        .divider::after { margin-left: var(--space-4); }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="/" class="logo"><i data-lucide="aperture" class="logo-icon"></i>PhotoVault</a>
+            <nav class="nav-links">
+                <a href="/gallery">Discover</a>
+                <a href="/subscription">Pricing</a>
+                <a href="/register" class="btn btn-primary">Sign Up</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="auth-container">
+        <div class="glass-panel auth-card animate-slide-up">
+            <div class="auth-header">
+                <i data-lucide="user-circle"></i>
+                <h2>Welcome Back</h2>
+                <p class="text-muted">Log in to your account to continue</p>
+            </div>
+
+            <form id="login-form">
+                <div id="login-error" class="hidden" style="background:rgba(239,68,68,0.1);border:1px solid var(--accent-danger);color:var(--accent-danger);padding:10px 14px;border-radius:8px;margin-bottom:16px;font-size:0.875rem;"></div>
+                
+                <div class="form-group">
+                    <label class="form-label">Username or Email</label>
+                    <input type="text" id="username" name="username" class="form-control" required autocomplete="username" placeholder="admin or admin@photovault.com">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" id="password" name="password" class="form-control" required autocomplete="current-password" placeholder="Enter your password">
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: var(--space-4);" id="login-btn">
+                    Log In
+                </button>
+            </form>
+
+            <div class="text-center mt-8">
+                <p class="text-muted">Don't have an account? <a href="/register" class="text-white" style="font-weight: 600;">Sign Up</a></p>
+            </div>
+        </div>
+    </main>
+
+    <script src="/js/utils.js"></script>
+    <script>
+        if (window.lucide) lucide.createIcons();
+        
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('login-btn');
+            const errorEl = document.getElementById('login-error');
+            
+            // Read the field as 'username' — backend accepts username OR email
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            
+            if (!username || !password) {
+                if(errorEl) { errorEl.textContent = 'Please fill in all fields.'; errorEl.classList.remove('hidden'); }
+                return;
+            }
+            
+            btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Logging in...';
+            btn.disabled = true;
+            if (errorEl) errorEl.classList.add('hidden');
+            if (window.lucide) lucide.createIcons({ root: btn });
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password }),
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                
+                if (!res.ok) throw new Error(data.error || 'Login failed');
+                
+                // Redirect based on user role
+                const params = new URLSearchParams(window.location.search);
+                const redirect = params.get('redirect');
+                
+                if (data.user?.role === 'admin') {
+                    window.location.href = redirect || '/admin/';
+                } else {
+                    window.location.href = redirect ? decodeURIComponent(redirect) : '/gallery';
+                }
+                
+            } catch (error) {
+                if (errorEl) {
+                    errorEl.textContent = error.message;
+                    errorEl.classList.remove('hidden');
+                } else {
+                    alert(error.message);
+                }
+                btn.innerHTML = 'Log In';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

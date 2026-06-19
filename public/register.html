@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up | PhotoVault</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .auth-container {
+            min-height: calc(100vh - 80px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-8);
+            margin-top: 80px;
+        }
+        .auth-card {
+            width: 100%;
+            max-width: 500px;
+        }
+        .auth-header {
+            text-align: center;
+            margin-bottom: var(--space-8);
+        }
+        .auth-header i {
+            width: 48px; height: 48px;
+            color: var(--accent-secondary);
+            margin-bottom: var(--space-4);
+        }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="/" class="logo"><i data-lucide="aperture" class="logo-icon"></i>PhotoVault</a>
+            <nav class="nav-links">
+                <a href="/gallery">Discover</a>
+                <a href="/subscription">Pricing</a>
+                <a href="/login" class="btn btn-ghost">Log In</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="auth-container">
+        <div class="glass-panel auth-card animate-slide-up">
+            <div class="auth-header">
+                <i data-lucide="user-plus"></i>
+                <h2>Create Account</h2>
+                <p class="text-muted">Join PhotoVault to download and purchase photos</p>
+            </div>
+
+            <form id="register-form">
+                <div class="form-group">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" id="fullname" class="form-control" required placeholder="John Doe">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" id="username" class="form-control" required placeholder="johndoe">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" id="email" class="form-control" required placeholder="john@example.com">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" id="password" class="form-control" required minlength="6" placeholder="At least 6 characters">
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: var(--space-6);" id="register-btn">
+                    Create Account
+                </button>
+            </form>
+
+            <div class="text-center mt-8">
+                <p class="text-muted">Already have an account? <a href="/login" class="text-white" style="font-weight: 600;">Log In</a></p>
+            </div>
+        </div>
+    </main>
+
+    <script src="/js/utils.js"></script>
+    <script>
+        if (window.lucide) lucide.createIcons();
+        
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('register-btn');
+            const data = {
+                username: document.getElementById('username').value,
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+                full_name: document.getElementById('fullname').value
+            };
+            
+            btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Creating...';
+            btn.disabled = true;
+            if (window.lucide) lucide.createIcons({ root: btn });
+
+            try {
+                await window.utils.api.post('/auth/register', data);
+                window.utils.showToast('Account created successfully!');
+                
+                // Auto login after 1.5s
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 1500);
+            } catch (error) {
+                window.utils.showToast(error.message, 'error');
+                btn.innerHTML = 'Create Account';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

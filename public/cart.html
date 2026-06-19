@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart | PhotoVault</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .cart-container {
+            padding: var(--space-8) 0;
+            margin-top: 80px;
+        }
+        .cart-layout {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: var(--space-8);
+        }
+        @media (max-width: 900px) {
+            .cart-layout { grid-template-columns: 1fr; }
+        }
+        .cart-item {
+            display: flex;
+            gap: var(--space-6);
+            padding: var(--space-4);
+            border-bottom: 1px solid var(--border-subtle);
+            align-items: center;
+        }
+        .cart-item-img {
+            width: 120px;
+            height: 90px;
+            object-fit: cover;
+            border-radius: var(--radius-sm);
+        }
+        .cart-item-info { flex: 1; }
+        .cart-item-title { font-weight: 600; font-size: 1.1rem; margin-bottom: 4px; }
+        .cart-item-meta { color: var(--text-muted); font-size: 0.875rem; }
+        .cart-item-price { font-weight: 700; font-size: 1.2rem; color: var(--text-primary); }
+        
+        .order-summary {
+            background: var(--bg-surface);
+            padding: var(--space-6);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--border-subtle);
+            position: sticky;
+            top: 100px;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: var(--space-4);
+            color: var(--text-secondary);
+        }
+        .summary-total {
+            display: flex;
+            justify-content: space-between;
+            margin-top: var(--space-6);
+            padding-top: var(--space-4);
+            border-top: 1px solid var(--border-strong);
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="/" class="logo"><i data-lucide="aperture" class="logo-icon"></i>PhotoVault</a>
+            <nav class="nav-links">
+                <a href="/gallery">Discover</a>
+                <a href="/subscription">Pricing</a>
+                <div class="auth-links flex gap-6 items-center">
+                    <a href="/account" class="flex items-center gap-2">
+                        <i data-lucide="user-circle"></i><span class="user-name-display">Account</span>
+                    </a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="cart-container container">
+        <h1 class="mb-8">Your Cart</h1>
+        
+        <div class="cart-layout">
+            <!-- Items List -->
+            <div class="glass-panel" style="padding: 0;">
+                <div id="cart-items-container">
+                    <div class="text-center py-12"><i data-lucide="loader-2" class="spin"></i> Loading cart...</div>
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div>
+                <div class="order-summary">
+                    <h3>Order Summary</h3>
+                    <div class="summary-row mt-6">
+                        <span>Items (<span id="summary-count">0</span>)</span>
+                        <span id="summary-subtotal">RM 0.00</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Tax</span>
+                        <span>Included</span>
+                    </div>
+                    <div class="summary-total">
+                        <span>Total</span>
+                        <span id="summary-total">RM 0.00</span>
+                    </div>
+                    
+                    <button class="btn btn-primary mt-8" style="width: 100%;" id="checkout-btn" disabled>
+                        Proceed to Checkout
+                    </button>
+                    <button class="btn btn-ghost mt-4" style="width: 100%;" onclick="window.location.href = '/gallery'">
+                        Continue Shopping
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/js/utils.js"></script>
+    <script src="/js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (window.lucide) lucide.createIcons();
+            await App.init();
+            
+            if (!App.user) {
+                window.location.href = '/login?redirect=/cart';
+                return;
+            }
+
+            loadCart();
+        });
+
+        async function loadCart() {
+            const container = document.getElementById('cart-items-container');
+            const checkoutBtn = document.getElementById('checkout-btn');
+            
+            try {
+                const res = await window.utils.api.get('/cart');
+                const items = res.items;
+                
+                if (items.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center py-16">
+                            <i data-lucide="shopping-cart" style="width: 64px; height: 64px; color: var(--text-muted); margin-bottom: 16px;"></i>
+                            <h3 class="text-muted">Your cart is empty</h3>
+                            <a href="/gallery" class="btn btn-primary mt-6">Browse Photos</a>
+                        </div>
+                    `;
+                    updateSummary(0, 0);
+                    checkoutBtn.disabled = true;
+                    if (window.lucide) lucide.createIcons({root: container});
+                    return;
+                }
+
+                container.innerHTML = items.map(item => `
+                    <div class="cart-item animate-slide-up" id="cart-item-${item.id}">
+                        <img src="/api/images/${item.id}/thumbnail" class="cart-item-img" alt="${item.title}">
+                        <div class="cart-item-info">
+                            <div class="cart-item-title">${item.title}</div>
+                            <div class="cart-item-meta">${item.width} × ${item.height} px • ${item.license_type} License</div>
+                            <button class="btn btn-ghost btn-remove mt-2" data-image-id="${item.id}" style="padding: 4px 8px; font-size: 0.8rem; color: var(--accent-danger);">
+                                <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Remove
+                            </button>
+                        </div>
+                        <div class="cart-item-price">${window.utils.formatCurrency(item.price)}</div>
+                    </div>
+                `).join('');
+
+                updateSummary(items.length, res.total);
+                checkoutBtn.disabled = false;
+                checkoutBtn.onclick = () => window.location.href = '/checkout';
+                
+                if (window.lucide) lucide.createIcons({root: container});
+
+                // Bind remove events
+                document.querySelectorAll('.btn-remove').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const imageId = e.currentTarget.dataset.imageId;
+                        try {
+                            await window.utils.api.delete(`/cart/remove/${imageId}`);
+                            window.utils.showToast('Item removed');
+                            App.updateCartCount();
+                            loadCart(); // Reload
+                        } catch (err) {
+                            window.utils.showToast('Failed to remove item', 'error');
+                        }
+                    });
+                });
+
+            } catch (err) {
+                container.innerHTML = `<div class="text-center py-12 text-danger">${err.message}</div>`;
+            }
+        }
+
+        function updateSummary(count, total) {
+            document.getElementById('summary-count').textContent = count;
+            document.getElementById('summary-subtotal').textContent = window.utils.formatCurrency(total);
+            document.getElementById('summary-total').textContent = window.utils.formatCurrency(total);
+        }
+    </script>
+</body>
+</html>
