@@ -120,9 +120,49 @@ module.exports = function(db) {
 
             const orders = db.prepare(query).all(...params);
 
+            // Fetch description for each order
+            for (let o of orders) {
+                if (o.notes) {
+                    o.description = o.notes;
+                } else {
+                    const items = db.prepare(`
+                        SELECT i.title FROM order_items oi
+                        JOIN images i ON oi.image_id = i.id
+                        WHERE oi.order_id = ? LIMIT 2
+                    `).all(o.id);
+                    if (items.length > 0) {
+                        o.description = items.map(i => i.title).join(', ');
+                        const count = db.prepare('SELECT COUNT(*) as count FROM order_items WHERE order_id = ?').get(o.id).count;
+                        if (count > 2) o.description += ` and ${count - 2} more item(s)`;
+                    } else {
+                        o.description = 'General Order';
+                    }
+                }
+            }
+
             res.json({ orders, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
         } catch (error) {
+            console.error(error);
             res.status(500).json({ error: 'Failed to fetch orders.' });
+        }
+    });
+
+    router.get('/orders/:id', (req, res) => {
+        try {
+            const order = db.prepare('SELECT o.*, u.username, u.email, u.full_name FROM orders o JOIN users u ON o.user_id = u.id WHERE o.id = ?').get(req.params.id);
+            if (!order) return res.status(404).json({ error: 'Order not found.' });
+
+            const items = db.prepare(`
+                SELECT oi.*, i.title, i.thumbnail_path
+                FROM order_items oi
+                JOIN images i ON oi.image_id = i.id
+                WHERE oi.order_id = ?
+            `).all(order.id);
+
+            res.json({ success: true, order, items });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: 'Failed to fetch order details.' });
         }
     });
 

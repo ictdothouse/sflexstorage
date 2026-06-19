@@ -70,6 +70,19 @@ app.use('/api/admin', require('./routes/admin')(db));
 app.use('/api', require('./routes/cloud')(db));
 app.use('/api/pages', require('./routes/pages')(db));
 
+// Public branding endpoint (no auth required)
+app.get('/api/branding', (req, res) => {
+    try {
+        const keys = ['site_name', 'site_logo', 'brand_color', 'footer_text', 'site_tagline'];
+        const rows = db.prepare(`SELECT key, value FROM system_settings WHERE key IN (${keys.map(() => '?').join(',')})`).all(...keys);
+        const branding = {};
+        rows.forEach(r => branding[r.key] = r.value);
+        res.json({ success: true, branding });
+    } catch (e) {
+        res.json({ success: true, branding: {} });
+    }
+});
+
 // Static files - disable caching in development to prevent stale JS/CSS
 app.use(express.static(path.join(__dirname, 'public'), {
     extensions: ['html'],

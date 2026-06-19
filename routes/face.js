@@ -133,25 +133,44 @@ module.exports = function(db) {
             const face = db.prepare('SELECT * FROM face_descriptors WHERE id = ?').get(faceId);
             if (!face) return res.status(404).send('Face not found');
 
-            const image = db.prepare('SELECT original_path FROM images WHERE id = ?').get(face.image_id);
+            const image = db.prepare('SELECT original_path, thumbnail_path, width, height FROM images WHERE id = ?').get(face.image_id);
             if (!image) return res.status(404).send('Image not found');
 
             const path = require('path');
             const fs = require('fs');
             const sharp = require('sharp');
             const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
-            const filePath = path.join(UPLOADS_DIR, image.original_path);
+            
+            let filePath = path.join(UPLOADS_DIR, image.original_path);
+            let usingThumbnail = false;
+
+            // Fallback to thumbnail if original doesn't exist locally (e.g. cloud storage)
+            if (!fs.existsSync(filePath)) {
+                if (image.thumbnail_path) {
+                    filePath = path.join(UPLOADS_DIR, image.thumbnail_path);
+                    usingThumbnail = true;
+                }
+            }
 
             if (!fs.existsSync(filePath)) return res.status(404).send('File not found');
 
-            let x = Math.round(face.bbox_x);
-            let y = Math.round(face.bbox_y);
-            let w = Math.round(face.bbox_w);
-            let h = Math.round(face.bbox_h);
-
-            // Add margin to crop
-            const margin = Math.round(w * 0.2);
             sharp(filePath).metadata().then(meta => {
+                let scaleX = 1;
+                let scaleY = 1;
+
+                if (usingThumbnail && image.width && image.height) {
+                    // Calculate scale factors because bbox is based on original dimensions
+                    scaleX = meta.width / image.width;
+                    scaleY = meta.height / image.height;
+                }
+
+                let x = Math.round(face.bbox_x * scaleX);
+                let y = Math.round(face.bbox_y * scaleY);
+                let w = Math.round(face.bbox_w * scaleX);
+                let h = Math.round(face.bbox_h * scaleY);
+
+                // Add margin to crop
+                const margin = Math.round(w * 0.2);
                 const cropX = Math.max(0, x - margin);
                 const cropY = Math.max(0, y - margin);
                 const cropW = Math.min(meta.width - cropX, w + margin * 2);

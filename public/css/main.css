@@ -155,3 +155,31 @@ main {
 
 .animate-fade-in { animation: fadeIn 0.5s ease forwards; }
 .animate-slide-up { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* ─── LIGHT THEME ─── */
+[data-theme="light"] {
+    --bg-base: #f4f5f7;
+    --bg-surface: #ffffff;
+    --bg-elevated: #f0f1f5;
+
+    --text-primary: #1a1a2e;
+    --text-secondary: #555566;
+    --text-muted: #8888a0;
+
+    --border-subtle: rgba(0, 0, 0, 0.08);
+    --border-strong: rgba(0, 0, 0, 0.15);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --shadow-glow: 0 0 20px rgba(124, 58, 237, 0.15);
+
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-blur: blur(12px);
+}
+
+/* Smooth theme transition */
+body, body * {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+

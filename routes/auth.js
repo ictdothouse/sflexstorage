@@ -241,7 +241,7 @@ module.exports = function(db) {
         if (!req.session.userId) return res.status(401).json({ error: 'Not authenticated.' });
         const favorites = db.prepare(`
             SELECT f.id as favorite_id, f.created_at as favorited_at,
-                   i.id, i.title, i.thumbnail_path, i.preview_path, i.price, i.tags,
+                   i.id as image_id, i.title, i.thumbnail_path, i.preview_path, i.price, i.tags,
                    g.title as gallery_title, g.slug as gallery_slug
             FROM favorites f
             JOIN images i ON f.image_id = i.id

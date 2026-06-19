@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Builder | Admin</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/admin/css/page-builder.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body style="overflow:hidden;">
+    <!-- TOP TOOLBAR -->
+    <div class="pb-toolbar">
+        <div class="pb-toolbar-left">
+            <a href="/admin/" style="color:var(--text-secondary); display:flex; align-items:center; gap:6px; font-size:0.85rem;">
+                <i data-lucide="arrow-left" style="width:16px;"></i> Back
+            </a>
+            <span style="color:var(--border-strong);">|</span>
+            <span class="pb-title" id="pb-page-title">Untitled Page</span>
+        </div>
+        <div class="pb-toolbar-center">
+            <button class="pb-mode-btn active" data-mode="wireframe"><i data-lucide="box" style="width:14px;display:inline;margin-right:4px;vertical-align:-2px;"></i>Wireframe</button>
+            <button class="pb-mode-btn" data-mode="live"><i data-lucide="eye" style="width:14px;display:inline;margin-right:4px;vertical-align:-2px;"></i>Live Preview</button>
+        </div>
+        <div class="pb-toolbar-right">
+            <button class="btn btn-ghost" id="pb-btn-settings" style="font-size:0.85rem;"><i data-lucide="settings" style="width:16px;"></i> Page Settings</button>
+            <button class="btn btn-ghost" id="pb-btn-preview" style="font-size:0.85rem;"><i data-lucide="external-link" style="width:16px;"></i> Preview</button>
+            <button class="btn btn-primary" id="pb-btn-save" style="font-size:0.85rem;"><i data-lucide="save" style="width:16px;"></i> Save</button>
+        </div>
+    </div>
+
+    <!-- Page Settings Modal -->
+    <div id="pb-settings-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center;">
+        <div class="glass-panel" style="width:100%; max-width:500px; padding:24px;">
+            <h3 style="margin-bottom:16px;">Page Settings</h3>
+            <div class="form-group">
+                <label class="form-label">Page Title</label>
+                <input type="text" id="pb-settings-title" class="form-control">
+            </div>
+            <div class="form-group">
+                <label class="form-label">URL Slug</label>
+                <input type="text" id="pb-settings-slug" class="form-control">
+            </div>
+            <div class="form-group" style="display:flex; gap:24px;">
+                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="pb-settings-published" checked> Published</label>
+                <label style="display:flex; align-items:center; gap:8px; color:var(--accent-tertiary);"><input type="checkbox" id="pb-settings-homepage"> Set as Homepage</label>
+            </div>
+            <div style="display:flex; gap:12px; margin-top:16px;">
+                <button class="btn btn-primary" onclick="pageBuilder.applySettings()">Apply</button>
+                <button class="btn btn-ghost" onclick="document.getElementById('pb-settings-modal').style.display='none'">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="pb-container">
+        <!-- LEFT PANEL: Block Palette -->
+        <div class="pb-left">
+            <h5>Layout</h5>
+            <div class="pb-block-btn" draggable="true" data-block-type="grid_row">
+                <i data-lucide="layout"></i> Grid Row
+            </div>
+
+            <h5>Content</h5>
+            <div class="pb-block-btn" draggable="true" data-block-type="hero">
+                <i data-lucide="image"></i> Hero Section
+            </div>
+            <div class="pb-block-btn" draggable="true" data-block-type="web_banner">
+                <i data-lucide="monitor"></i> Web Banner
+            </div>
+            <div class="pb-block-btn" draggable="true" data-block-type="text">
+                <i data-lucide="type"></i> Text Block
+            </div>
+            <div class="pb-block-btn" draggable="true" data-block-type="stats">
+                <i data-lucide="bar-chart"></i> Stats Block
+            </div>
+
+            <h5>Media</h5>
+            <div class="pb-block-btn" draggable="true" data-block-type="carousel">
+                <i data-lucide="sliders"></i> Carousel
+            </div>
+            <div class="pb-block-btn" draggable="true" data-block-type="gallery_grid">
+                <i data-lucide="grid-3x3"></i> Gallery Grid
+            </div>
+        </div>
+
+        <!-- CENTER: Canvas -->
+        <div class="pb-canvas-wrap">
+            <div class="pb-canvas wireframe" id="pb-canvas">
+                <div class="pb-empty-canvas" id="pb-empty-msg">
+                    <i data-lucide="mouse-pointer-click"></i>
+                    <div>Drag blocks from the left panel to start building your page.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: Style Inspector -->
+        <div class="pb-right" id="pb-inspector">
+            <div class="pb-no-selection">
+                <i data-lucide="pointer" style="width:32px; height:32px; margin-bottom:12px; color:var(--text-muted);"></i>
+                <div>Click on a block to edit its content and style.</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/utils.js"></script>
+    <script src="/admin/js/page-builder.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.lucide) lucide.createIcons();
+            window.pageBuilder = new PageBuilder();
+            pageBuilder.init();
+        });
+    </script>
+</body>
+</html>

@@ -154,7 +154,7 @@ class AdminPanel {
 
             // CMS Page Builder Buttons
             if (e.target.closest('#btn-new-page')) {
-                this.openPageBuilder();
+                this.createAndOpenBuilder();
             }
             if (e.target.closest('#btn-cancel-page')) {
                 document.getElementById('page-builder-form').style.display = 'none';
@@ -215,6 +215,7 @@ class AdminPanel {
                 case 'settings':  await this.loadSettings(); break;
                 case 'cloud-r2': await this.loadCloudSettings(); break;
                 case 'cloud-drive': await this.loadCloudSettings(); break;
+                case 'branding': await this.loadBrandingSettings(); break;
             }
         } catch (err) {
             console.error(`Error loading view [${target}]:`, err);
@@ -649,11 +650,103 @@ class AdminPanel {
     }
 
     async editPage(id) {
+        window.open(`/admin/page-builder.html?id=${id}`, '_blank');
+    }
+
+    async createAndOpenBuilder() {
         try {
-            const data = await this.apiFetch(`/pages/${id}`);
-            if (data.page) this.openPageBuilder(data.page);
+            const data = await this.apiFetch('/pages', {
+                method: 'POST',
+                body: JSON.stringify({ title: 'Untitled Page', is_published: false })
+            });
+            if (data.page?.id) {
+                window.open(`/admin/page-builder.html?id=${data.page.id}`, '_blank');
+                this.loadPages();
+            }
         } catch (err) {
             this.showToast(err.message, 'error');
+        }
+    }
+
+    async viewOrderDetails(id) {
+        try {
+            const data = await this.apiFetch(`/admin/orders/${id}`);
+            const o = data.order;
+            const items = data.items;
+
+            document.getElementById('order-modal').style.display = 'flex';
+            
+            const header = document.getElementById('order-modal-header');
+            const itemsContainer = document.getElementById('order-modal-items');
+            const timeline = document.getElementById('order-modal-timeline');
+
+            // Header
+            header.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-size:1.1rem; color:var(--text-primary); font-weight:600;">#${o.order_number}</span>
+                    <span class="badge ${o.status === 'paid' ? 'badge-success' : 'badge-warning'}">${o.status.toUpperCase()}</span>
+                </div>
+                <div>User: ${o.full_name || o.username} (${o.email})</div>
+                <div>Amount: RM ${parseFloat(o.total_amount).toFixed(2)}</div>
+            `;
+
+            // Items
+            if (items.length > 0) {
+                itemsContainer.innerHTML = items.map(i => `
+                    <div style="display:flex; gap:12px; align-items:center; background:rgba(0,0,0,0.1); padding:8px; border-radius:6px;">
+                        <img src="${i.thumbnail_path ? '/api/images/' + i.image_id + '/thumbnail' : ''}" style="width:48px; height:48px; object-fit:cover; border-radius:4px; background:var(--bg-surface);">
+                        <div style="flex:1;">
+                            <div style="font-weight:600;">${i.title || 'Unknown Image'}</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">RM ${parseFloat(i.price).toFixed(2)}</div>
+                        </div>
+                    </div>
+                `).join('');
+            } else if (o.notes) {
+                itemsContainer.innerHTML = `<div style="padding:12px; background:rgba(0,0,0,0.1); border-radius:6px;">${o.notes}</div>`;
+            } else {
+                itemsContainer.innerHTML = `<div style="color:var(--text-muted);">No items found.</div>`;
+            }
+
+            // Timeline
+            let timelineHtml = `
+                <div style="position:relative;">
+                    <div style="position:absolute; left:-21px; top:4px; width:10px; height:10px; border-radius:50%; background:var(--accent-primary);"></div>
+                    <div style="font-weight:600; font-size:0.9rem;">Order Placed</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted);">${new Date(o.created_at).toLocaleString('en-MY')}</div>
+                </div>
+            `;
+            if (o.paid_at) {
+                timelineHtml += `
+                    <div style="position:relative;">
+                        <div style="position:absolute; left:-21px; top:4px; width:10px; height:10px; border-radius:50%; background:var(--accent-success);"></div>
+                        <div style="font-weight:600; font-size:0.9rem;">Payment Received</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted);">${new Date(o.paid_at).toLocaleString('en-MY')}</div>
+                        ${o.payment_gateway ? `<div style="font-size:0.75rem; color:var(--text-muted);">Gateway: ${o.payment_gateway}</div>` : ''}
+                        ${o.transaction_id ? `<div style="font-size:0.75rem; color:var(--text-muted);">Transaction ID: ${o.transaction_id}</div>` : ''}
+                    </div>
+                `;
+            }
+            if (o.status === 'completed') {
+                timelineHtml += `
+                    <div style="position:relative;">
+                        <div style="position:absolute; left:-21px; top:4px; width:10px; height:10px; border-radius:50%; background:var(--accent-success);"></div>
+                        <div style="font-weight:600; font-size:0.9rem;">Order Completed</div>
+                    </div>
+                `;
+            } else if (o.status === 'cancelled') {
+                timelineHtml += `
+                    <div style="position:relative;">
+                        <div style="position:absolute; left:-21px; top:4px; width:10px; height:10px; border-radius:50%; background:var(--accent-danger);"></div>
+                        <div style="font-weight:600; font-size:0.9rem;">Order Cancelled</div>
+                    </div>
+                `;
+            }
+            timeline.innerHTML = timelineHtml;
+            
+            if (window.lucide) lucide.createIcons({ root: document.getElementById('order-modal') });
+
+        } catch (error) {
+            this.showToast('Failed to load order details', 'error');
         }
     }
 
@@ -1031,7 +1124,18 @@ class AdminPanel {
                 });
 
                 this.showToast(`Tagged ${selectedFaceIds.length} faces as "${personName}"`);
-                modal.style.display = 'none';
+                
+                const checkboxes = grid.querySelectorAll('.face-checkbox:checked');
+                checkboxes.forEach(cb => cb.closest('div').remove());
+                
+                input.value = '';
+                input.disabled = false;
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Tag Selected';
+
+                if (grid.querySelectorAll('.face-checkbox').length === 0) {
+                    modal.style.display = 'none';
+                }
                 await this.loadFaceGroups();
             } catch (err) {
                 this.showToast(err.message, 'error');
@@ -1067,7 +1171,17 @@ class AdminPanel {
 
                     const personName = mergeSelect.options[mergeSelect.selectedIndex].text;
                     this.showToast(`Merged ${selectedFaceIds.length} faces into "${personName}"`);
-                    modal.style.display = 'none';
+                    
+                    const checkboxes = grid.querySelectorAll('.face-checkbox:checked');
+                    checkboxes.forEach(cb => cb.closest('div').remove());
+                    
+                    mergeSelect.value = '';
+                    mergeBtn.disabled = false;
+                    mergeBtn.textContent = 'Merge';
+
+                    if (grid.querySelectorAll('.face-checkbox').length === 0) {
+                        modal.style.display = 'none';
+                    }
                     await this.loadFaceGroups();
                 } catch (err) {
                     this.showToast(err.message, 'error');
@@ -1123,14 +1237,19 @@ class AdminPanel {
             return;
         }
         tbody.innerHTML = orders.map(o => {
-            const statusColor = o.status === 'paid' || o.status === 'completed'
-                ? 'var(--accent-success)' : 'var(--accent-tertiary)';
+            const statusClass = (o.status === 'paid' || o.status === 'completed') ? 'badge-success' : 
+                              (o.status === 'pending' || o.status === 'processing') ? 'badge-warning' : 
+                              (o.status === 'cancelled' || o.status === 'refunded') ? 'badge-danger' : 'badge-neutral';
+            
             return `
-                <tr>
-                    <td style="font-weight:600;">${o.order_number}</td>
+                <tr style="cursor:pointer;" onclick="window.adminPanel.viewOrderDetails(${o.id})">
+                    <td>
+                        <div style="font-weight:600;">${o.order_number}</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">${o.description || 'General Order'}</div>
+                    </td>
                     <td>${o.username}<br><span style="font-size:0.75rem;color:var(--text-muted);">${o.email}</span></td>
                     <td>RM ${parseFloat(o.total_amount || 0).toFixed(2)}</td>
-                    <td><span style="padding:2px 8px;border-radius:12px;font-size:0.75rem;background:rgba(0,0,0,0.3);color:${statusColor};">${o.status.toUpperCase()}</span></td>
+                    <td><span class="badge ${statusClass}">${o.status.toUpperCase()}</span></td>
                     <td style="font-size:0.8rem;color:var(--text-muted);">${new Date(o.created_at).toLocaleDateString('en-MY')}</td>
                 </tr>
             `;
@@ -1743,6 +1862,122 @@ class AdminPanel {
             
         } catch(err) {
             this.showToast('Upload failed: ' + err.message, 'error');
+        }
+    }
+    // ─── BRANDING SETTINGS ───
+    async loadBrandingSettings() {
+        try {
+            const data = await this.apiFetch('/admin/settings');
+            const s = data.settings || {};
+            document.getElementById('brand-site-name').value = s.site_name || '';
+            document.getElementById('brand-tagline').value = s.site_tagline || '';
+            document.getElementById('brand-logo-url').value = s.site_logo || '';
+            document.getElementById('brand-footer').value = s.footer_text || '';
+            const color = s.brand_color || '#7c3aed';
+            document.getElementById('brand-color').value = color;
+            document.getElementById('brand-color-text').value = color;
+            
+            const btnColor = s.button_color || '#7c3aed';
+            document.getElementById('button-color').value = btnColor;
+            document.getElementById('button-color-text').value = btnColor;
+
+            const btnHoverColor = s.button_hover_color || '#6d28d9';
+            document.getElementById('button-hover-color').value = btnHoverColor;
+            document.getElementById('button-hover-color-text').value = btnHoverColor;
+
+            // Preview logo
+            const preview = document.getElementById('brand-logo-preview');
+            if (s.site_logo) {
+                preview.innerHTML = `<img src="${s.site_logo}" style="max-height:60px; border-radius:8px; border:1px solid var(--border-subtle);">`;
+            } else {
+                preview.innerHTML = '<span class="text-muted" style="font-size:0.85rem;">No logo set</span>';
+            }
+
+            // Sync color picker ↔ text
+            document.getElementById('brand-color').addEventListener('input', (e) => {
+                document.getElementById('brand-color-text').value = e.target.value;
+            });
+            document.getElementById('brand-color-text').addEventListener('input', (e) => {
+                if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) {
+                    document.getElementById('brand-color').value = e.target.value;
+                }
+            });
+            
+            document.getElementById('button-color').addEventListener('input', (e) => {
+                document.getElementById('button-color-text').value = e.target.value;
+            });
+            document.getElementById('button-color-text').addEventListener('input', (e) => {
+                if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) {
+                    document.getElementById('button-color').value = e.target.value;
+                }
+            });
+            
+            document.getElementById('button-hover-color').addEventListener('input', (e) => {
+                document.getElementById('button-hover-color-text').value = e.target.value;
+            });
+            document.getElementById('button-hover-color-text').addEventListener('input', (e) => {
+                if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) {
+                    document.getElementById('button-hover-color').value = e.target.value;
+                }
+            });
+
+            // Logo file upload
+            document.getElementById('brand-logo-file').addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const formData = new FormData();
+                formData.append('image', file);
+                try {
+                    const res = await fetch('/api/images/upload', { method: 'POST', body: formData });
+                    const result = await res.json();
+                    if (res.ok && result.image) {
+                        const url = '/uploads/' + result.image.filename;
+                        document.getElementById('brand-logo-url').value = url;
+                        preview.innerHTML = `<img src="${url}" style="max-height:60px; border-radius:8px; border:1px solid var(--border-subtle);">`;
+                        this.showToast('Logo uploaded!');
+                    }
+                } catch (err) {
+                    this.showToast('Logo upload failed', 'error');
+                }
+            });
+
+            // Save button
+            document.getElementById('btn-save-branding').addEventListener('click', () => this.saveBrandingSettings());
+
+            if (window.lucide) lucide.createIcons();
+        } catch (err) {
+            this.showToast('Failed to load branding: ' + err.message, 'error');
+        }
+    }
+
+    async saveBrandingSettings() {
+        const btn = document.getElementById('btn-save-branding');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        try {
+            const payload = {
+                site_name: document.getElementById('brand-site-name').value,
+                site_tagline: document.getElementById('brand-tagline').value,
+                site_logo: document.getElementById('brand-logo-url').value,
+                brand_color: document.getElementById('brand-color-text').value || document.getElementById('brand-color').value,
+                button_color: document.getElementById('button-color-text').value || document.getElementById('button-color').value,
+                button_hover_color: document.getElementById('button-hover-color-text').value || document.getElementById('button-hover-color').value,
+                footer_text: document.getElementById('brand-footer').value
+            };
+
+            await this.apiFetch('/admin/settings', {
+                method: 'PUT',
+                body: JSON.stringify(payload)
+            });
+
+            this.showToast('Branding saved successfully!');
+        } catch (err) {
+            this.showToast('Save failed: ' + err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="save"></i> Save Branding';
+            if (window.lucide) lucide.createIcons({ root: btn });
         }
     }
 }

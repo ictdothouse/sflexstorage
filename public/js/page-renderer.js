@@ -248,6 +248,19 @@ class PageRenderer {
                 wrapper.innerHTML = `<div class="container py-8"><div class="glass-panel">Unknown block type: ${block.type}</div></div>`;
         }
 
+        // Apply custom styles from the page builder
+        if (block.styles) {
+            const s = block.styles;
+            if (s.marginTop) wrapper.style.marginTop = s.marginTop;
+            if (s.marginBottom) wrapper.style.marginBottom = s.marginBottom;
+            if (s.paddingTop) wrapper.style.paddingTop = s.paddingTop;
+            if (s.paddingBottom) wrapper.style.paddingBottom = s.paddingBottom;
+            if (s.backgroundColor) wrapper.style.backgroundColor = s.backgroundColor;
+            if (s.textColor) wrapper.style.color = s.textColor;
+            if (s.textAlign) wrapper.style.textAlign = s.textAlign;
+            if (s.borderRadius) wrapper.style.borderRadius = s.borderRadius;
+        }
+
         return wrapper;
     }
 }

@@ -1,0 +1,405 @@
+/* ─── PAGE BUILDER CSS ─── */
+
+.pb-container {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    font-family: var(--font-sans);
+    background: var(--bg-base);
+    color: var(--text-primary);
+}
+
+/* ─── TOP TOOLBAR ─── */
+.pb-toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    z-index: 100;
+}
+
+.pb-toolbar-left, .pb-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pb-toolbar .pb-title {
+    font-weight: 700;
+    font-size: 1rem;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pb-toolbar-center {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-full);
+    padding: 4px;
+}
+
+.pb-mode-btn {
+    padding: 6px 16px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.pb-mode-btn.active {
+    background: var(--accent-primary);
+    color: white;
+}
+
+/* ─── LEFT PANEL (Block Palette) ─── */
+.pb-left {
+    width: 260px;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border-subtle);
+    margin-top: 56px;
+    overflow-y: auto;
+    padding: 16px;
+    flex-shrink: 0;
+}
+
+.pb-left h5 {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+    margin-top: 16px;
+}
+
+.pb-block-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    color: var(--text-primary);
+    cursor: grab;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    margin-bottom: 6px;
+}
+
+.pb-block-btn:hover {
+    border-color: var(--accent-primary);
+    background: rgba(124, 58, 237, 0.08);
+}
+
+.pb-block-btn:active {
+    cursor: grabbing;
+}
+
+.pb-block-btn i {
+    width: 18px;
+    height: 18px;
+    color: var(--accent-primary);
+}
+
+/* ─── CANVAS (Center) ─── */
+.pb-canvas-wrap {
+    flex: 1;
+    margin-top: 56px;
+    overflow-y: auto;
+    padding: 32px;
+    background: var(--bg-base);
+}
+
+.pb-canvas {
+    max-width: 1200px;
+    margin: 0 auto;
+    min-height: 400px;
+    position: relative;
+}
+
+.pb-empty-canvas {
+    border: 2px dashed var(--border-strong);
+    border-radius: 12px;
+    padding: 80px 40px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 1rem;
+}
+
+.pb-empty-canvas i {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 16px;
+    color: var(--accent-primary);
+    opacity: 0.5;
+}
+
+/* ─── CANVAS BLOCKS ─── */
+.pb-block {
+    position: relative;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    transition: box-shadow 0.2s, border-color 0.2s;
+    cursor: pointer;
+}
+
+/* Wireframe mode */
+.pb-canvas.wireframe .pb-block {
+    border: 2px dashed var(--border-strong);
+    background: var(--bg-elevated);
+    padding: 16px;
+}
+
+.pb-canvas.wireframe .pb-block .pb-block-preview {
+    display: none;
+}
+
+.pb-canvas.wireframe .pb-block .pb-block-wireframe {
+    display: block;
+}
+
+/* Live mode */
+.pb-canvas.live .pb-block {
+    border: 1px solid transparent;
+}
+
+.pb-canvas.live .pb-block .pb-block-preview {
+    display: block;
+}
+
+.pb-canvas.live .pb-block .pb-block-wireframe {
+    display: none;
+}
+
+/* Selected block */
+.pb-block.selected {
+    border-color: var(--accent-primary) !important;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+}
+
+/* Block header bar */
+.pb-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: rgba(124, 58, 237, 0.08);
+    border-radius: 6px 6px 0 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent-primary);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.pb-block:hover .pb-block-header,
+.pb-block.selected .pb-block-header {
+    opacity: 1;
+}
+
+.pb-block-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.pb-block-actions button {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: all 0.15s;
+}
+
+.pb-block-actions button:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.pb-block-actions button.danger:hover {
+    color: var(--accent-danger);
+}
+
+/* Wireframe label */
+.pb-block-wireframe {
+    display: none;
+    padding: 12px;
+}
+
+.pb-block-wireframe .wf-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pb-block-wireframe .wf-placeholder {
+    margin-top: 8px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed var(--border-subtle);
+    border-radius: 6px;
+}
+
+/* Preview content */
+.pb-block-preview {
+    display: block;
+}
+
+/* Drop indicator */
+.pb-drop-indicator {
+    height: 4px;
+    background: var(--accent-primary);
+    border-radius: 2px;
+    margin: 4px 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.pb-drop-indicator.active {
+    opacity: 1;
+}
+
+/* ─── RIGHT PANEL (Style Inspector) ─── */
+.pb-right {
+    width: 300px;
+    background: var(--bg-surface);
+    border-left: 1px solid var(--border-subtle);
+    margin-top: 56px;
+    overflow-y: auto;
+    padding: 16px;
+    flex-shrink: 0;
+}
+
+.pb-right h5 {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+    margin-top: 20px;
+}
+
+.pb-right h5:first-child {
+    margin-top: 0;
+}
+
+.pb-right .pb-no-selection {
+    text-align: center;
+    padding: 40px 16px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.pb-prop-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.pb-prop-row label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    width: 80px;
+    flex-shrink: 0;
+}
+
+.pb-prop-row input,
+.pb-prop-row select {
+    flex: 1;
+    padding: 6px 8px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+.pb-prop-row input[type="color"] {
+    width: 36px;
+    height: 30px;
+    padding: 2px;
+    cursor: pointer;
+    border-radius: 6px;
+    flex: none;
+}
+
+/* ─── BLOCK CONTENT EDITOR ─── */
+.pb-content-field {
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.pb-content-field label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.pb-content-field input,
+.pb-content-field textarea,
+.pb-content-field select {
+    width: 100%;
+    padding: 6px 8px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-family: var(--font-sans);
+}
+
+.pb-content-field textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+/* Drag ghost */
+.pb-drag-ghost {
+    position: fixed;
+    pointer-events: none;
+    opacity: 0.8;
+    z-index: 9999;
+    padding: 8px 16px;
+    background: var(--accent-primary);
+    color: white;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* Drag over state */
+.pb-canvas.drag-over {
+    background: rgba(124, 58, 237, 0.03);
+}
+
+.pb-block.drag-over-top {
+    border-top: 3px solid var(--accent-primary) !important;
+}
+
+.pb-block.drag-over-bottom {
+    border-bottom: 3px solid var(--accent-primary) !important;
+}

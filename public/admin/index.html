@@ -51,7 +51,7 @@
     <!-- Sidebar -->
     <aside class="admin-sidebar">
         <a href="/" class="admin-logo text-white" style="text-decoration:none;">
-            <i data-lucide="aperture" style="color:var(--accent-primary);"></i> PhotoVault Admin
+            <i data-lucide="aperture" style="color:var(--accent-primary);"></i> <span class="app-brand-name">Admin</span>
         </a>
         <nav class="admin-nav">
             <div class="nav-item active" data-target="dashboard"><i data-lucide="layout-dashboard"></i> Dashboard</div>
@@ -61,6 +61,7 @@
             <div class="nav-item" data-target="pages"><i data-lucide="file-text"></i> Manage Pages</div>
             <div class="nav-item" data-target="orders"><i data-lucide="shopping-bag"></i> Orders</div>
             <div class="nav-item" data-target="users"><i data-lucide="users"></i> Users</div>
+            <div class="nav-item" data-target="branding"><i data-lucide="palette"></i> Branding</div>
             <div class="nav-item" data-target="settings">
                 <i data-lucide="settings"></i> Settings
             </div>
@@ -518,6 +519,61 @@
                 </div>
             </div>
 
+            <!-- Branding View -->
+            <div id="view-branding" class="view-section">
+                <h3>Branding & Appearance</h3>
+                <p class="text-muted mb-6">Customize your site's logo, name, colors, and footer.</p>
+
+                <div class="glass-panel" style="max-width:650px;">
+                    <div class="form-group">
+                        <label class="form-label">Site Name</label>
+                        <input type="text" id="brand-site-name" class="form-control" placeholder="e.g. PhotoVault">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tagline</label>
+                        <input type="text" id="brand-tagline" class="form-control" placeholder="e.g. Premium Stock Photos">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Logo</label>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <input type="text" id="brand-logo-url" class="form-control" placeholder="Logo URL or upload below" style="flex:1;">
+                            <button class="btn btn-secondary" type="button" onclick="document.getElementById('brand-logo-file').click()"><i data-lucide="upload"></i> Upload</button>
+                            <input type="file" id="brand-logo-file" accept="image/*" style="display:none;">
+                        </div>
+                        <div id="brand-logo-preview" style="margin-top:12px;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Brand Color (Primary)</label>
+                        <div style="display:flex; gap:12px; align-items:center;">
+                            <input type="color" id="brand-color" value="#7c3aed" style="width:60px; height:40px; border:none; cursor:pointer; border-radius:8px;">
+                            <input type="text" id="brand-color-text" class="form-control" placeholder="#7c3aed" style="max-width:160px;">
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                        <div class="form-group">
+                            <label class="form-label">Button Color</label>
+                            <div style="display:flex; gap:12px; align-items:center;">
+                                <input type="color" id="button-color" value="#7c3aed" style="width:60px; height:40px; border:none; cursor:pointer; border-radius:8px;">
+                                <input type="text" id="button-color-text" class="form-control" placeholder="#7c3aed" style="max-width:160px;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Button Hover Color</label>
+                            <div style="display:flex; gap:12px; align-items:center;">
+                                <input type="color" id="button-hover-color" value="#6d28d9" style="width:60px; height:40px; border:none; cursor:pointer; border-radius:8px;">
+                                <input type="text" id="button-hover-color-text" class="form-control" placeholder="#6d28d9" style="max-width:160px;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Footer Text</label>
+                        <input type="text" id="brand-footer" class="form-control" placeholder="e.g. © 2024 PhotoVault. All rights reserved.">
+                    </div>
+
+                    <button class="btn btn-primary" id="btn-save-branding"><i data-lucide="save"></i> Save Branding</button>
+                </div>
+            </div>
+
         </div>
     </main>
 
@@ -536,7 +592,7 @@
                 <button class="btn btn-ghost" onclick="document.getElementById('cluster-modal').style.display='none'"><i data-lucide="x"></i></button>
             </div>
             <!-- AI Disclaimer inside modal -->
-            <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2); border-radius:6px; padding:10px 14px; margin-bottom:12px; font-size:0.8rem; color:var(--text-muted); display:flex; gap:8px; align-items:center;">
+            <div class="warning-note">
                 <i data-lucide="info" style="width:14px; height:14px; flex-shrink:0; color:var(--accent-tertiary);"></i>
                 AI grouping may be inaccurate. Uncheck wrong faces before tagging, or merge them to another person.
             </div>

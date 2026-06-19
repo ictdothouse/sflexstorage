@@ -111,30 +111,7 @@
 </head>
 <body>
 
-    <header class="site-header">
-        <!-- Exact same header as index.html -->
-        <div class="container">
-            <a href="/" class="logo"><i data-lucide="aperture" class="logo-icon"></i>PhotoVault</a>
-            <nav class="nav-links">
-                <a href="/gallery">Discover</a>
-                <a href="/subscription">Pricing</a>
-                <div class="guest-links flex gap-4 items-center">
-                    <a href="/login" class="btn btn-ghost">Log In</a>
-                    <a href="/register" class="btn btn-primary">Sign Up</a>
-                </div>
-                <div class="auth-links flex gap-6 items-center hidden">
-                    <a href="/cart" class="cart-icon" style="position: relative;">
-                        <i data-lucide="shopping-cart"></i>
-                        <span class="cart-count hidden" style="position: absolute; top:-8px; right:-12px; background:var(--accent-danger); color:white; font-size:10px; padding:2px 6px; border-radius:10px; font-weight:bold;">0</span>
-                    </a>
-                    <a href="/account" class="flex items-center gap-2">
-                        <i data-lucide="user-circle"></i>
-                        <span class="user-name-display">Account</span>
-                    </a>
-                </div>
-            </nav>
-        </div>
-    </header>
+    <div id="app-header"></div>
 
     <main class="container">
         <div class="image-view-container" id="image-container">
@@ -147,7 +124,7 @@
     </main>
 
     <footer class="site-footer">
-        <div class="container text-center"><p class="text-muted">© 2024 PhotoVault.</p></div>
+        <div class="container text-center"><p class="text-muted" id="footer-text"></p></div>
     </footer>
 
     <script src="/js/utils.js?v=4"></script>
